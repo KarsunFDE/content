@@ -20,15 +20,15 @@ cohort1_compression: "Mon 25 May = Memorial Day (US federal holiday). W1 runs Tu
 
 **Afternoon (practical)** — Each learner picks weakest sub-stack and onboards via Claude Code into the real training repo. `docker-compose up` exploration. CI/CD walked via a real PR through GHA. AWS Bedrock model-access verification. **Brownfield-debt inventory STARTED in `weeks/W01/brownfield-debt.md`.** Onboarding-patterns playbook seeded in `weeks/W01/onboarding-patterns.md`.
 
-**Conceptual (`pre-session/D2.md`)** — FDE programme overview + 12 FDE situations primer. Comparative framing for Wed's Galent demo + the AWS Public Sector Blog post on Karsun ReDuX + Galent's "Claude Managed Agents vs Enterprise AI Platforms" post (pre-reading for Wed).
+**Conceptual (`pre-session/D2.md`)** — FDE programme overview + 12 FDE situations primer. Comparative framing for Wed's instructor-led GalentAI vs Karsun ReDuX comparative session (Galent presenter CUT per D-052; session authored from /web-research on public sources only) + the AWS Public Sector Blog post on Karsun ReDuX + Galent's "Claude Managed Agents vs Enterprise AI Platforms" post (pre-reading for Wed).
 
 **Diagnostic recast (EOD):** *"what did you ask Claude that helped you understand the codebase fastest?"* feeds pair-assignment proposal. **Originally Mon EOD; now Tue EOD due to Memorial Day compression.** Mitigation for the shortened observation window: diagnostic instructions sent to cohort the weekend before so learners can pre-think their answers.
 
-## Wed — Galent Comparative Half-Day + Microservices Foundation + Pair Project Repo Init *(12 topics, at cap)*
+## Wed — Instructor-led Comparative Half-Day + Microservices Foundation + Pair Project Repo Init *(12 topics, at cap)*
 
-*Pair assignments formally announced **before** the Galent demo (Wed morning, 09:00). Afternoon absorbs the original Tue morning Microservices Foundation deep-dive.*
+*Pair assignments formally announced 08:30 (Wed morning); 30-second pitch + class instant-runoff vote claims pre-created pair-project repos. Afternoon absorbs the original Tue morning Microservices Foundation deep-dive.*
 
-**Morning (Galent presenter slot, 3 hr — `war-room/D3.md`)** — GalentAI walkthrough + live demo + Q&A + instructor-moderated comparative discussion (ReDuX anchored on public material only).
+**Morning (3 hr — `war-room/D3.md`)** — Instructor-led GalentAI vs Karsun ReDuX comparative session (Galent presenter CUT per D-052). Grounded in `research/galentai-vs-karsun-redux-comparative-20260522.md` (4,000 words, 30+ cited public sources). Three blocks: GalentAI deep-dive (50min) + Karsun ReDuX deep-dive (50min, post-break) + 11-dimension comparative matrix + "end-goal and capabilities" framing + cohort discussion (60min).
 
 **Afternoon (practical, dense)** — **Microservices Foundation walkthrough** (compressed from original Tue morning): microservices architecture of the training repo (Angular SPA → Spring Boot service mesh → Python/FastAPI AI microservices), service boundaries + bounded contexts, OAuth2 + JWT auth flow end-to-end, structured logging + correlation IDs (intentionally inconsistent), distributed-systems basics. **Containerization deep-dive — multi-stage Dockerfiles, `:latest`-tag antipattern (brownfield-debt item 11), missing healthchecks (item 7), Postgres volume persistence gap (item 7), Compose networking + service-discovery DNS.** **Brownfield-debt inventory CONTINUED.** Pair-authored Comparative ADR (`templates/scenario-alternatives.md` shape). **Pair Project repo initialization** — each pair scaffolds their continuous Phase-1-through-Phase-2 build (`pair-N-<aspect>` under the KarsunFDE org per the locked aspect from `skills/scenario-design-planning/references/karsun-domain-aspects.yml`).
 
@@ -53,8 +53,8 @@ cohort1_compression: "Mon 25 May = Memorial Day (US federal holiday). W1 runs Tu
 ## Special notes for W1 (Cohort #1)
 
 - **Mon 25 May = Memorial Day, no class.** W1 runs Tue–Fri (4 days). Original Mon kickoff compressed into Tue morning; original Tue Microservices Foundation deep-dive compressed into Wed afternoon. No `D1.md` artifacts authored for Cohort #1's W1 (D2..D5 only).
-- **W1 Wed = Galent presenter.** Confirmation deadline = 3 weeks before W1 Tue. Backup recording rehearsed before cohort #1 per §17 cohort instantiation checklist.
-- **Pair assignment** deferred to **Tue afternoon** (1 day later than original) based on Tue diagnostic; pairs formally announced Wed morning before Galent demo. Less observation window (1 day vs 2 in canonical) — mitigated by sending diagnostic prompts weekend-before so learners pre-think.
+- **W1 Wed AM = instructor-led GalentAI vs Karsun ReDuX comparative session** (Galent presenter CUT per D-052). Session grounded in `research/galentai-vs-karsun-redux-comparative-20260522.md`. Instructor authors from public sources only; cohort internalises federal-context modesty ("we don't have access to internals").
+- **Pair assignment** deferred to **Tue afternoon** based on Tue diagnostic; pairs formally announced Wed 08:30 (then 30-sec pitch + class instant-runoff vote for pre-created repo claim). Less observation window (1 day vs 2 in canonical) — mitigated by sending diagnostic prompts weekend-before so learners pre-think.
 - **First Live Defense does NOT run Fri W1** — scenarios won't yet have ADRs. First Live Defense = Fri W2.
 - **Codex Adversarial Review starts at Light strictness per D-034** — pairs see findings but most are framed as coaching, not blocking.
 - **HITL becomes a programme thread Fri** — explicit framing inside LLM Engineering Essentials. Each pair commits *one* HITL decision in their Phase 1 plan-spec by EOD Fri.
@@ -64,7 +64,7 @@ cohort1_compression: "Mon 25 May = Memorial Day (US federal holiday). W1 runs Tu
 
 - `PLAN.md` — this file.
 - `pre-session/D2.md` through `D5.md` — pre-session reading material (one per day; **no D1.md for Cohort #1** due to Memorial Day).
-- `war-room/D2.md` through `D5.md` — morning war-room scenario (one per day; D3 is the Galent slot).
+- `war-room/D2.md` through `D5.md` — morning war-room scenario (one per day; D3 AM is the instructor-led GalentAI vs Karsun ReDuX comparative session).
 - `scenarios/` — scenario-alternatives prompts released this week.
 - `assessments/` — Light MCQ Fri + first Codex Adversarial Reviews on PRs.
 - `codex-reviews/` — Codex review outputs (populated by `codex-adversarial-review` skill against PR diffs).
