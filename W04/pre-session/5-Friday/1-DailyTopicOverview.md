@@ -27,13 +27,13 @@ The PDF column for today is **Failure Handling Patterns**. It is not "incident r
 
 **Question to bring to morning war-room:** *"For whichever step my pair stalls on tomorrow — what observability or artifact would have unstalled us 15 minutes earlier?"* You will use this question Fri EOD in `retros/Fri-post-incident-retro.md`.
 
-> *Glossary inline:* **Detect → Respond → RCA → Fix-or-stage** is the four-step Failure Handling cadence. **Rescue branch** = a per-stage instructor-staged branch (e.g., `stage-J17`, `stage-3.0-rewrite`) you can revert to without losing Thu's work. **Amended plan-spec** = Mon's `planning/W04/` ADRs edited in-place post-incident — see §4.
+> *Glossary inline:* **Detect → Respond → RCA → Fix-or-stage** is the four-step Failure Handling cadence. **Rescue branch** = a per-stage instructor-staged branch (e.g., `stage-J21`, `stage-3.0-rewrite`) you can revert to without losing Thu's work. **Amended plan-spec** = Mon's `planning/W04/` ADRs edited in-place post-incident — see §4.
 
 ## 2. Critical Fixes to Brownfield — what makes a fix shippable Friday (10 min)
 
 From the PDF: **Critical Fixes to Brownfield**. When something breaks under load on a legacy stack, the menu of fixes is narrower than it looks. Rank them by reversibility, not by elegance:
 
-1. **Revert to rescue branch** (always available, per D-056 single-branch design). Thu's `stage-J17` and `stage-3.0-rewrite` rescue branches exist exactly for this. Reverting is not failure — it is the cheapest correct fix when load surfaces a regression you can't characterise inside the 30-minute window.
+1. **Revert to rescue branch** (always available, per D-056 single-branch design). Thu's `stage-J21` and `stage-3.0-rewrite` rescue branches exist exactly for this. Reverting is not failure — it is the cheapest correct fix when load surfaces a regression you can't characterise inside the 30-minute window.
 2. **Feature-flag off** (if a flag exists). The Mon planning artifacts should have named the high-risk flips; flipping off is reversible and auditable.
 3. **Hot-patch a narrow surface** — one Pydantic v2 validator on `ai-orchestrator`, one Spring Security filter on `api-gateway`, one repository method on `solicitation-service`. The narrowness IS the safety. A 12-line patch in one file is reviewable in 5 minutes; a 200-line patch across three services is not.
 4. **Stage for W5 with a documented gap.** Open a ticket, write the gap into an ADR amendment, hand off honestly. *This is the W5 hand-off list in `war-room/D5.md` §3.5.*
@@ -99,9 +99,9 @@ The PDF also names the **Weekly Survey Feedback form** as a Friday EOD artifact 
 
 W5 is AIOps anchor week. W5 Mon's own pre-session brief carries the full framing — this section just pre-loads three vocabulary anchors so amendment ADRs that say "stage for W5" can name the right library by Monday morning. **Recognition tier only — no deep-dive here.**
 
-- [Resilience4j — Circuit Breaker Documentation](https://resilience4j.readme.io/docs/circuitbreaker) (~5 min skim), retrieved 2026-05-23 via /web-research. The JVM circuit-breaker / rate-limiter / bulkhead / retry library. Spring Boot 3.x-native via `resilience4j-spring-boot3` starter — wires into the `stage-3.0` services from Thu. If your amended plan-spec says "stage circuit-breaker work for W5," this is the library name.
-- [OpenTelemetry — W3C Trace Context (`traceparent`)](https://opentelemetry.io/docs/specs/otel/context/api-propagators/) (~5 min skim), retrieved 2026-05-23 via /web-research. The HTTP-header standard `traceparent: 00-{trace-id}-{span-id}-{flags}` — every service in `acquire-gov` must forward + emit this by W5 Fri. Fixes debt item 6 (inconsistent correlation IDs).
-- [Micrometer Tracing — Spring Boot 3 Integration](https://docs.spring.io/spring-boot/reference/actuator/tracing.html) (~3 min skim), retrieved 2026-05-23 via /web-research. How `stage-3.0` services emit traces post-Thu hop. Replaces Spring Cloud Sleuth (deprecated in SB 3.x).
+- [Resilience4j — Circuit Breaker Documentation](https://resilience4j.readme.io/docs/circuitbreaker) (~5 min skim), retrieved 2026-05-23 via /web-research. The JVM circuit-breaker / rate-limiter / bulkhead / retry library. The `resilience4j-spring-boot3` starter is the W5 wiring path for services on `stage-4.0` (Resilience4j SB 4 starter is in-flight as of `last_verified`; SB 3 starter remains the canonical entry point for now — surface to instructor if a SB 4 starter has GA'd by cohort delivery). SB 4.0 ships native `@Retryable` + `@ConcurrencyLimit` annotations that cover the simple cases; Resilience4j is the answer when you need full circuit-breaker semantics + metrics.
+- [OpenTelemetry — W3C Trace Context (`traceparent`)](https://opentelemetry.io/docs/specs/otel/context/api-propagators/) (~5 min skim), retrieved 2026-05-23 via /web-research. The HTTP-header standard `traceparent: 00-{trace-id}-{span-id}-{flags}` — every service in `acquire-gov` must forward + emit this by W5 Fri. Fixes debt item 6 (inconsistent correlation IDs). SB 4.0's first-party `spring-boot-starter-opentelemetry` wires OTLP export of metrics + traces out of the box.
+- [Micrometer Tracing — Spring Boot Integration](https://docs.spring.io/spring-boot/reference/actuator/tracing.html) (~3 min skim), retrieved 2026-05-23 via /web-research. How `stage-4.0` services emit traces post-Thu hop. Replaces Spring Cloud Sleuth (deprecated in SB 3.x).
 
 That's it for W5 prep tonight. The full W5 framing (Datadog AI, AIOps platforms comparative, HITL #7 = auto-remediation authority boundary) belongs in W5 Mon's pre-session — not here.
 

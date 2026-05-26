@@ -42,7 +42,7 @@ The argument over whether machines (or tools) *augment* or *replace* humans is o
 
 Harvard Business Review's "Collaborative Intelligence" framing argues that the most durable applications of AI in workplaces are those where humans and machines amplify each other's strengths rather than substituting for each other. The authors observe that across many industries, "AI will radically alter how work gets done and who does it, [but] the technology's larger impact will be in complementing and augmenting human capabilities, not replacing them" ([Collaborative Intelligence](https://hbr.org/2018/07/collaborative-intelligence-humans-and-ai-are-joining-forces), HBR, retrieved 2026-05-26).
 
-In the codemod world, the same principle takes a more pedestrian form: OpenRewrite recipes handle a defined and deterministic share of a migration; the remainder requires judgment calls a human owns. The split is not a failure of the tool; it is the design of the workflow. Engineers who try to push the ratio to 100% automation usually discover the residual was the part that actually needed thinking ([OpenRewrite UpgradeSpringBoot_3_0 recipe](https://docs.openrewrite.org/recipes/java/spring/boot3/upgradespringboot_3_0), retrieved 2026-05-26).
+In the codemod world, the same principle takes a more pedestrian form: OpenRewrite recipes handle a defined and deterministic share of a migration; the remainder requires judgment calls a human owns. The split is not a failure of the tool; it is the design of the workflow. Engineers who try to push the ratio to 100% automation usually discover the residual was the part that actually needed thinking ([OpenRewrite UpgradeSpringBoot_4_0 (Community Edition) recipe](https://docs.openrewrite.org/recipes/java/spring/boot4/upgradespringboot_4_0-community-edition), retrieved 2026-05-26).
 
 This reading frames the choice as a workflow design question — when does augmentation fit, when does replacement fit, and what does the seam between them look like in practice?
 
@@ -68,7 +68,7 @@ If any answer points to "augmentation," the workflow needs a human in the loop. 
 
 ### 3.3 The augmentation seam in tool-assisted migrations
 
-When OpenRewrite runs the SB 2.7 → 3.0 composite recipe, roughly two-thirds to three-quarters of the diff lands deterministically — imports, deprecated APIs, Maven/Gradle coordinates, configuration-key renames ([UpgradeSpringBoot_3_0 recipe](https://docs.openrewrite.org/recipes/java/spring/boot3/upgradespringboot_3_0), retrieved 2026-05-26). The residual concentrates in three places: custom servlet `Filter` wiring, `WebSecurityConfigurerAdapter` subclasses, and distributed-tracing configuration. Each of those requires a decision about *intent* — the recipe can rewrite imports but cannot infer what the team wanted the filter chain to enforce.
+When OpenRewrite runs the SB 2.7 → 4.0 composite recipe, roughly two-thirds of the diff lands deterministically — imports, deprecated APIs, Maven/Gradle coordinates, configuration-key renames ([UpgradeSpringBoot_4_0 (Community Edition) recipe](https://docs.openrewrite.org/recipes/java/spring/boot4/upgradespringboot_4_0-community-edition), retrieved 2026-05-26). The residual concentrates in three places: custom servlet `Filter` wiring, `WebSecurityConfigurerAdapter` subclasses, and distributed-tracing configuration. Each of those requires a decision about *intent* — the recipe can rewrite imports but cannot infer what the team wanted the filter chain to enforce.
 
 The mature workflow names the seam: codemod runs first, captures its patch, and the team treats the residual as the surface for judgment. The tooling does not "fail" when it cannot rewrite the residual; the *workflow* fails if the team treats the seam as a defect rather than a design feature.
 
@@ -170,7 +170,7 @@ When you finish, swap with a partner and review each other's drafts. Look specif
 1. [Collaborative Intelligence: Humans and AI Are Joining Forces](https://hbr.org/2018/07/collaborative-intelligence-humans-and-ai-are-joining-forces) — retrieved 2026-05-26
 2. [I still care about the code](https://martinfowler.com/articles/exploring-gen-ai/i-still-care-about-the-code.html) — retrieved 2026-05-26
 3. [Exploring Generative AI (index)](https://martinfowler.com/articles/exploring-gen-ai.html) — retrieved 2026-05-26
-4. [OpenRewrite — UpgradeSpringBoot_3_0 Recipe](https://docs.openrewrite.org/recipes/java/spring/boot3/upgradespringboot_3_0) — retrieved 2026-05-26
+4. [OpenRewrite — UpgradeSpringBoot_4_0 Recipe (Community Edition)](https://docs.openrewrite.org/recipes/java/spring/boot4/upgradespringboot_4_0-community-edition) — retrieved 2026-05-26
 5. [Patterns of Legacy Displacement](https://martinfowler.com/articles/patterns-legacy-displacement/) — retrieved 2026-05-26
 
 Last verified: 2026-05-26

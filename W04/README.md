@@ -11,7 +11,7 @@
 |-------|---------------|
 | **Spec-driven dev as living discipline** | Mon §0 retro (3rd practice — W2/W3/W4 Mon) + Tue workshop (cohort discovers debt item 12: their own PRs aren't actually linted) |
 | **AI Security (OWASP LLM Top 10:2025)** | Wed — full-day deep-dive + HITL #6 (LLM06 Excessive Agency framing of authority boundaries) + dedicated `/web-research` slot per D-040 |
-| **Modernization execution** | Thu — OpenRewrite hop SB 2.7→3.0 + J11→17 + `javax.*`→`jakarta.*` per D-054 + D-056 single-branch design |
+| **Modernization execution** | Thu — OpenRewrite hop SB 2.7→4.0 + J11→21 + `javax.*`→`jakarta.*` (Jakarta EE 11, SF7, SS7) per D-054 + D-056 single-branch design; retargeted from SB 3.5 because SB 3.5 OSS-EOLs 30 Jun 2026 |
 | **Production-incident reality** | Fri — Mid-Sprint Surprise = Workflow 4 + Item 3 load incident (per D-049 + D-060) |
 
 ## Day-by-day
@@ -21,7 +21,7 @@
 | **Mon Plan Day** | Phase 2 framing + W4 Modernization ADR + AI Security Threat Model ADR | §0 retro on W3 Phase 1 Defense; Scenario Design Planning brief (graded); two ADR drafts |
 | **Tue** | Spec-driven dev workshop + Brownfield Modernization Planning | Cohort discovers debt item 12 (lint disabled in GHA); fixes debt item 8 (frontend hardcoded URL); OpenRewrite pre-flight |
 | **Wed AI Security** | OWASP LLM Top 10 deep-dive + **HITL #6** + dedicated /web-research slot | Item 1 JWT-skip exploit demo (LLM07/LLM08); Item 9 prompt-injection-via-stored-content fix (LLM01); HITL #6 authority-boundary table (LLM06 framing) |
-| **Thu** | Modernization Execution — OpenRewrite hop | SB 2.7→3.0 + J11→17 + javax→jakarta; SB 3.5 + SB 4.0 future-hop ADRs (evidence-backed per D-054 Pass 3) |
+| **Thu** | Modernization Execution — OpenRewrite hop | SB 2.7→4.0 + J11→21 + javax→jakarta (Jakarta EE 11 / SF7 / SS7); Java 25 + SF7 minor-release future-hop ADRs (evidence-backed per D-054 Pass 3) |
 | **Fri MID-SPRINT SURPRISE** | Workflow 4 + Item 3 load incident | Incident at 09:00 (no prior warning); detect → respond → RCA → fix-or-stage-for-W5; amended plan-spec; Live Defense on amendments |
 
 ## D-049 + D-060 framing — the Fri surprise

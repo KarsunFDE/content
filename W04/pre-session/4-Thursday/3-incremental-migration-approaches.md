@@ -51,7 +51,7 @@ What these patterns share is the *checkpoint*: a known-green state, captured in 
 Most migrations on the ground organise into five stages, regardless of which framework is being moved:
 
 1. **Baseline.** The last known-green state before any migration work. A tag, not a branch.
-2. **Mechanical sweep.** A deterministic codemod, recipe, or script that handles the bulk of the rewrite. The OpenRewrite SB 2.7 → 3.0 composite recipe is a canonical example — it chains roughly thirty sub-recipes to migrate build files, deprecated APIs, and configuration settings ([OpenRewrite UpgradeSpringBoot_3_0 recipe](https://docs.openrewrite.org/recipes/java/spring/boot3/upgradespringboot_3_0), retrieved 2026-05-26).
+2. **Mechanical sweep.** A deterministic codemod, recipe, or script that handles the bulk of the rewrite. The OpenRewrite SB 2.7 → 4.0 composite recipe is a canonical example — it chains 30+ sub-recipes (including `UpgradeSpringBoot_3_5` + `UpgradeSpringFramework_7_0` + `UpgradeSpringSecurity_7_0` internally) to migrate build files, deprecated APIs, and configuration settings ([OpenRewrite UpgradeSpringBoot_4_0 (Community Edition) recipe](https://docs.openrewrite.org/recipes/java/spring/boot4/upgradespringboot_4_0-community-edition), retrieved 2026-05-26).
 3. **Manual residual.** The fraction the codemod could not handle — typically 20-35% of the diff. This is where humans own the judgment calls.
 4. **Green target.** All tests pass; integration checks pass; the system is releasable on the new stack.
 5. **Final-expected state.** The version the team converges toward over the next few releases (additional cleanup, dead-code removal, doc updates).
@@ -168,6 +168,6 @@ The abstraction does not leak supplier types into call sites; the flag is checke
 2. [Branch by Abstraction](https://martinfowler.com/bliki/BranchByAbstraction.html) — retrieved 2026-05-26
 3. [Feature Flag](https://martinfowler.com/bliki/FeatureToggle.html) — retrieved 2026-05-26
 4. [Patterns of Legacy Displacement](https://martinfowler.com/articles/patterns-legacy-displacement/) — retrieved 2026-05-26
-5. [OpenRewrite UpgradeSpringBoot_3_0 Recipe](https://docs.openrewrite.org/recipes/java/spring/boot3/upgradespringboot_3_0) — retrieved 2026-05-26
+5. [OpenRewrite UpgradeSpringBoot_4_0 Recipe (Community Edition)](https://docs.openrewrite.org/recipes/java/spring/boot4/upgradespringboot_4_0-community-edition) — retrieved 2026-05-26
 
 Last verified: 2026-05-26

@@ -154,6 +154,6 @@ The crucial detail is step 4: the rescue branch is created *between* mechanical 
 2. [Strangler Fig Application](https://martinfowler.com/bliki/StranglerFigApplication.html) — retrieved 2026-05-26
 3. [Branch by Abstraction](https://martinfowler.com/bliki/BranchByAbstraction.html) — retrieved 2026-05-26
 4. [Migrate from version 1.x to 2.x of the AWS SDK for Java](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/migration.html) — retrieved 2026-05-26
-5. [OpenRewrite — UpgradeSpringBoot_3_0 Recipe](https://docs.openrewrite.org/recipes/java/spring/boot3/upgradespringboot_3_0) — retrieved 2026-05-26
+5. [OpenRewrite — UpgradeSpringBoot_4_0 Recipe (Community Edition)](https://docs.openrewrite.org/recipes/java/spring/boot4/upgradespringboot_4_0-community-edition) — retrieved 2026-05-26
 
 Last verified: 2026-05-26

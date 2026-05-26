@@ -15,10 +15,13 @@ sources:
   - url: https://martinfowler.com/articles/scaling-architecture-conversationally.html
     retrieved_on: 2026-05-26
     recency_category: foundation-stable
-  - url: https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.5-Release-Notes
+  - url: https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Release-Notes
     retrieved_on: 2026-05-26
     recency_category: foundation-stable
   - url: https://spring.io/blog/2025/11/20/spring-boot-4-0-0-available-now
+    retrieved_on: 2026-05-26
+    recency_category: foundation-stable
+  - url: https://docs.openrewrite.org/recipes/java/migrate/upgradetojava25
     retrieved_on: 2026-05-26
     recency_category: foundation-stable
 last_verified: 2026-05-26
@@ -84,15 +87,15 @@ Andrew Harmel-Law's Thoughtworks article on scaling architecture argues that ADR
 
 When a team finishes a framework hop, they often write *two* future-hop ADRs: one for the next minor (a low-risk continuation) and one for the next major (a high-risk jump). Both ADRs cite the same evidence floor; what differs is the recommendation. The pattern is useful because it forces the team to confront the trade-off in writing: a smaller incremental hop with shorter runway, or a bigger jump with longer runway.
 
-For example, a project that has just landed at Spring Boot 3.0 might write:
+For example, a project that has just landed at Spring Boot 4.0 + Java 21 might write:
 
-- "Future-hop ADR — 3.0 to 3.5": shorter runway because Spring Boot 3.5's OSS-support window has a known end date in the near term ([Spring Boot 3.5 Release Notes](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.5-Release-Notes), retrieved 2026-05-26).
-- "Future-hop ADR — 3.0 to 4.0": longer runway since Spring Boot 4.0 GA'd in November 2025 and represents a new generation built on Spring Framework 7 with Java 25 first-class support ([Spring Boot 4.0.0 available now](https://spring.io/blog/2025/11/20/spring-boot-4-0-0-available-now), retrieved 2026-05-26).
+- "Future-hop ADR — Java 21 → Java 25": Java 25 brings virtual-thread optimization and continues the LTS line; the hop is a runtime change without a framework version bump ([UpgradeToJava25 recipe](https://docs.openrewrite.org/recipes/java/migrate/upgradetojava25), retrieved 2026-05-26).
+- "Future-hop ADR — SF7.0 → SF7.1 (or next 4.x minor)": shorter-cycle minor-release hop within the SB 4.x line; lower risk per hop but more frequent. Spring Boot 4.x is on a ~6-month minor cadence per the 4.0 GA announcement ([Spring Boot 4.0.0 available now](https://spring.io/blog/2025/11/20/spring-boot-4-0-0-available-now), retrieved 2026-05-26).
 
 The recommendation may be either path; what matters is that both ADRs cite the dry-run evidence for *their* respective hops, not just the release notes.
 
 > [!instructor-review]
-> The official Spring Boot support matrix lists 3.5.x OSS support windows that the curriculum should re-verify against the live `spring.io/projects/spring-boot/support` page in the week immediately before the cohort writes its future-hop ADRs. If the 3.5.x OSS-support window has changed since `last_verified` (2026-05-26), the trade-off between 3.5 and 4.0 in the curriculum example may shift — surface to instructor for current-week verification.
+> The official Spring Boot support matrix lists 4.0.x OSS support windows (currently through 31 Dec 2026) that the curriculum should re-verify against the live `spring.io/projects/spring-boot/support` page in the week immediately before the cohort writes its future-hop ADRs. If the 4.0.x OSS-support window has changed since `last_verified` (2026-05-26), or if a 4.1.x line is now GA, the trade-off between staying-on-4.0 and hopping-to-4.1 in the curriculum example may shift — surface to instructor for current-week verification.
 
 ## 4. Generic Implementation
 
@@ -198,7 +201,8 @@ The template is deliberately heavy in the Evidence section. A future-hop ADR tha
 1. [Architectural Decision Records (adr.github.io)](https://adr.github.io/) — retrieved 2026-05-26
 2. [architecture-decision-record (Henderson collection)](https://github.com/joelparkerhenderson/architecture-decision-record) — retrieved 2026-05-26
 3. [Scaling the Practice of Architecture, Conversationally](https://martinfowler.com/articles/scaling-architecture-conversationally.html) — retrieved 2026-05-26
-4. [Spring Boot 3.5 Release Notes](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.5-Release-Notes) — retrieved 2026-05-26
+4. [Spring Boot 4.0 Release Notes](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Release-Notes) — retrieved 2026-05-26
 5. [Spring Boot 4.0.0 available now](https://spring.io/blog/2025/11/20/spring-boot-4-0-0-available-now) — retrieved 2026-05-26
+6. [OpenRewrite — UpgradeToJava25 Recipe](https://docs.openrewrite.org/recipes/java/migrate/upgradetojava25) — retrieved 2026-05-26
 
 Last verified: 2026-05-26

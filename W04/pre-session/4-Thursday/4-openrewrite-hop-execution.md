@@ -2,47 +2,49 @@
 week: W04
 day: Thu
 topic_slug: openrewrite-hop-execution
-topic_title: "OpenRewrite hop execution — Java 17 + Spring Boot 3.5 + javax to jakarta"
+topic_title: "OpenRewrite hop execution — Java 21 + Spring Boot 4.0 + javax to jakarta"
 parent_overview: W04/pre-session/4-Thursday/1-DailyTopicOverview.md
 estimated_minutes: 15
 sources:
-  - url: https://docs.openrewrite.org/recipes/java/spring/boot3/upgradespringboot_3_5
+  - url: https://docs.openrewrite.org/recipes/java/spring/boot4/upgradespringboot_4_0-community-edition
     retrieved_on: 2026-05-26
     recency_category: foundation-stable
   - url: https://docs.openrewrite.org/running-recipes/getting-started
     retrieved_on: 2026-05-26
     recency_category: foundation-stable
-  - url: https://docs.openrewrite.org/recipes/java/migrate/upgradetojava17
+  - url: https://docs.openrewrite.org/recipes/java/migrate/upgradetojava21
     retrieved_on: 2026-05-26
     recency_category: foundation-stable
-  - url: https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.0-Migration-Guide
+  - url: https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Release-Notes
     retrieved_on: 2026-05-26
     recency_category: foundation-stable
-  - url: https://spring.io/blog/2023/11/23/spring-boot-2-7-18-available-now
+  - url: https://spring.io/blog/2025/11/20/spring-boot-4-0-0-available-now
     retrieved_on: 2026-05-26
     recency_category: foundation-stable
 last_verified: 2026-05-26
 ---
 
-# OpenRewrite hop execution — Java 17 + Spring Boot 3.5 + javax to jakarta
+# OpenRewrite hop execution — Java 21 + Spring Boot 4.0 + javax to jakarta
 
 ## 1. Learning Objectives
 
 By the end of this reading, the learner can:
 
 - Explain what OpenRewrite is, what an AST-based codemod is, and why deterministic transformations are safer than regex-based rewrites for large-scale migrations.
-- Sequence a Spring Boot 2.7 → 3.5 hop into ordered sub-recipes (Java 17 first, then SB 3.5, then javax→jakarta) and explain why that order is enforced.
+- Sequence a Spring Boot 2.7 → 4.0 hop into ordered sub-recipes (Java 21 first, then SB 4.0 — which itself composes SB 3.5 + SF7 + SS7 sub-recipes — then javax→jakarta) and explain why that order is enforced.
 - Run `mvn rewrite:dryRun` and `mvn rewrite:run` against a Maven project and interpret the patch output.
-- Identify the ~70/30 split between mechanically-handled and manually-required changes in an SB 3.5 migration, and name three canonical residual clusters.
+- Identify the ~70/30 split between mechanically-handled and manually-required changes in an SB 4.0 migration, and name three canonical residual clusters.
 - Recognise when a recipe composition is appropriate ("upgrade") versus when a manual port is required ("replace").
 
 ## 2. Introduction
 
 OpenRewrite is a recipe-driven, AST-based refactoring engine for the JVM, with first-class support for migrating Java, Spring, and other JVM ecosystems across major versions. Recipes operate on a *lossless semantic tree* (LST), so a transformation preserves comments, formatting, and import organisation in addition to syntax ([OpenRewrite Getting Started](https://docs.openrewrite.org/running-recipes/getting-started), retrieved 2026-05-26).
 
-The Spring Boot 2.7 → 3.5 upgrade is the canonical "hop" OpenRewrite is built for. The official `org.openrewrite.java.spring.boot3.UpgradeSpringBoot_3_5` recipe composes more than thirty sub-recipes covering build files, deprecated APIs, configuration-key changes, and the Spring Framework 6 / Jakarta EE 9 migrations the SB 3.x hop entails ([UpgradeSpringBoot_3_5 recipe](https://docs.openrewrite.org/recipes/java/spring/boot3/upgradespringboot_3_5), retrieved 2026-05-26). The 3.5 recipe internally composes the prior 3.0/3.1/3.2/3.3/3.4 hops, so the destination is the current 3.5.x line in one declared step.
+The Spring Boot 2.7 → 4.0 upgrade is the current canonical "hop" OpenRewrite is built for. The official `org.openrewrite.java.spring.boot4.UpgradeSpringBoot_4_0` recipe (Community Edition) composes more than thirty sub-recipes covering build files, deprecated APIs, configuration-key changes, and the Spring Framework 7 / Spring Security 7 / Jakarta EE 11 migrations the SB 4.x hop entails ([UpgradeSpringBoot_4_0 (Community Edition) recipe](https://docs.openrewrite.org/recipes/java/spring/boot4/upgradespringboot_4_0-community-edition), retrieved 2026-05-26). The 4.0 recipe internally composes `UpgradeSpringBoot_3_5` + `UpgradeSpringFramework_7_0` + `UpgradeSpringSecurity_7_0` (and the prior 3.0/3.1/3.2/3.3/3.4 sub-hops), so the destination is the current 4.0.x line in one declared step.
 
-Two facts shape how the hop is executed in practice. First, the recipe chains *prerequisite* recipes — you cannot land at SB 3.5 without first being on SB 2.7 (latest) and Java 17. The migration guide is explicit: upgrade to the latest 2.7.x first, then attempt the 3.x hop ([Spring Boot 3.0 Migration Guide](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.0-Migration-Guide), retrieved 2026-05-26). Second, the recipe is *not exhaustive*: a residual fraction of changes — security-filter wiring, custom servlet integrations, observability configuration — requires hand edits. Both facts converge on the same execution shape: dryRun first, capture the patch, then run, then hand-edit the residual.
+**Why 4.0 and not 3.5.** This curriculum was earlier scoped to SB 3.5 as the W4 target. We retargeted to SB 4.0 because SB 3.5's OSS-support window closes 30 Jun 2026 — within days of Cohort #1's W4 finish. Landing the cohort on a version that goes commercial-only at W5 is a federal-compliance posture failure (federal modernization expects an OSS-supported runtime). SB 4.0 OSS-supported through 31 Dec 2026 (~6 months runway) ([Spring Boot 4.0.0 available now](https://spring.io/blog/2025/11/20/spring-boot-4-0-0-available-now), retrieved 2026-05-26). Java 21 (not 17) because Spring Framework 7's recommended runtime is Java 21+ (virtual threads, sealed classes, pattern matching) and Java 21 is the LTS sweet spot.
+
+Two facts shape how the hop is executed in practice. First, the recipe chains *prerequisite* recipes — you cannot land at SB 4.0 without first being on SB 2.7 (latest) and Java 21 (or Java 17 minimum, but Java 21 is recommended for SF7). The migration guide is explicit: upgrade to the latest 2.7.x first, then attempt the 3.x hop ([Spring Boot 4.0 Release Notes](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Release-Notes), retrieved 2026-05-26). The composed SB 4.0 recipe handles the 3.x intermediate internally — you do not run a separate SB 3.5 hop. Second, the recipe is *not exhaustive*: a residual fraction of changes — security-filter wiring (SS6 → SS7), custom servlet integrations, observability configuration (Sleuth → Micrometer Tracing) — requires hand edits. Both facts converge on the same execution shape: dryRun first, capture the patch, then run, then hand-edit the residual.
 
 ## 3. Core Concepts
 
@@ -52,23 +54,24 @@ A regex rewrite operates on text. A codemod operates on the parsed structure of 
 
 This matters for migrations because the changes are *non-local*. Renaming `javax.servlet.Filter` to `jakarta.servlet.Filter` requires updating the import, the type reference, every method override that references the type, and the build file's dependency exclusions. A regex would catch some of these and miss others. An AST recipe catches all of them because it has the symbol table.
 
-### 3.2 The 2.7 → 3.5 recipe composition
+### 3.2 The 2.7 → 4.0 recipe composition
 
-The `UpgradeSpringBoot_3_5` recipe declares its sub-recipes in order ([recipe definition](https://docs.openrewrite.org/recipes/java/spring/boot3/upgradespringboot_3_5), retrieved 2026-05-26). The shape is:
+The `UpgradeSpringBoot_4_0` (Community Edition) recipe declares its sub-recipes in order ([recipe definition](https://docs.openrewrite.org/recipes/java/spring/boot4/upgradespringboot_4_0-community-edition), retrieved 2026-05-26). The shape is:
 
 1. **Prerequisite — Migrate to Spring Boot 2.7.** If the project is on an earlier 2.x line, that hop is run first.
-2. **Migrate to Java 17.** The SB 3.x baseline is Java 17; the recipe will not progress otherwise.
-3. **Upgrade Spring Boot dependency versions through 3.0 → 3.1 → 3.2 → 3.3 → 3.4 → 3.5.** Maven and Gradle coordinates updated to 3.5.x; each intermediate hop runs its own sub-recipes.
-4. **javax → jakarta package migration** (lands at the 3.0 hop). All `javax.servlet`, `javax.persistence`, `javax.validation`, `javax.annotation` references rewritten.
-5. **Spring Framework 6 sub-recipes.** Deprecated API replacements, configuration-key renames.
-6. **Configuration-property migrations.** `application.properties` and `application.yml` key updates across the 3.0–3.5 line.
-7. **Spring Security 6, Spring Data, observability adjustments.** Sub-recipes per affected sub-project, including 3.2+ virtual-thread support and 3.5-era Micrometer Tracing tweaks.
+2. **Migrate to Java 21.** The SB 4.x recommended baseline is Java 21 (Java 17 is the floor; SF7 recommends Java 21+); the recipe will not progress otherwise.
+3. **`UpgradeSpringBoot_3_5` sub-recipe.** Composed internally — drives the 3.0 → 3.1 → 3.2 → 3.3 → 3.4 → 3.5 intermediate hops with their own sub-recipes.
+4. **javax → jakarta package migration** (lands at the 3.0 sub-hop, Jakarta EE 9 namespace; Jakarta EE 11 / Servlet 6.1 baseline arrives with SF7). All `javax.servlet`, `javax.persistence`, `javax.validation`, `javax.annotation` references rewritten.
+5. **`UpgradeSpringFramework_7_0` sub-recipe.** SF6 → SF7 deprecated API replacements, configuration-key renames, null-safety annotations (JSpecify portfolio-wide).
+6. **`UpgradeSpringSecurity_7_0` sub-recipe.** SS6 → SS7 wiring migrations. `SecurityFilterChain` bean pattern is unchanged from SS6 — only the version pin and any deprecated-API references move.
+7. **Configuration-property migrations.** `application.properties` and `application.yml` key updates across the 3.0–4.0 line, plus 4.0-era additions (`spring.mvc.apiversion.*`, `spring.webflux.apiversion.*`, OpenTelemetry starter properties).
+8. **Spring Data, observability, modularization adjustments.** Sub-recipes per affected sub-project, including 3.2+ virtual-thread support, Micrometer Tracing tweaks, and the 4.0 modularization (smaller jars, `spring-boot-starter-opentelemetry` first-party starter).
 
-The ordering is load-bearing: you cannot rewrite to Jakarta packages while still on Spring Framework 5, and you cannot rewrite Spring Security 5 filter-chain wiring without first being on Spring Framework 6.
+The ordering is load-bearing: you cannot rewrite to Jakarta packages while still on Spring Framework 5, and you cannot rewrite Spring Security 5 filter-chain wiring without first being on Spring Framework 6 (and onward to 7).
 
-### 3.3 The Java 17 hop sits underneath
+### 3.3 The Java 21 hop sits underneath
 
-`UpgradeToJava17` is a recipe in its own right; it composes earlier hops (Java 8 → Java 11 → Java 17) and updates build-tool plugins to Java-17-compatible versions ([UpgradeToJava17 recipe](https://docs.openrewrite.org/recipes/java/migrate/upgradetojava17), retrieved 2026-05-26). It is also what the SB 3.5 composite invokes. Running it in isolation first — independently of SB 3.5 — is the recommended path when a team wants to land the Java upgrade and the framework upgrade as two separate merges.
+`UpgradeToJava21` is a recipe in its own right; it composes earlier hops (Java 8 → Java 11 → Java 17 → Java 21) and updates build-tool plugins to Java-21-compatible versions ([UpgradeToJava21 recipe](https://docs.openrewrite.org/recipes/java/migrate/upgradetojava21), retrieved 2026-05-26). It is also what the SB 4.0 composite invokes. Running it in isolation first — independently of SB 4.0 — is the recommended path when a team wants to land the Java upgrade and the framework upgrade as two separate merges.
 
 ### 3.4 How dryRun and run differ
 
@@ -76,15 +79,15 @@ The ordering is load-bearing: you cannot rewrite to Jakarta packages while still
 
 ### 3.5 The ~70/30 split
 
-Across published case studies, the mechanical portion of an SB 2.7 → 3.5 hop lands in the 65-75% range; the remainder requires manual work. The residual concentrates in three clusters:
+Across published case studies, the mechanical portion of an SB 2.7 → 4.0 hop lands in the 60-70% range (slightly lower than the SB 3.5 hop's 65-75% because SS6 → SS7 + SF6 → SF7 stack on top of the javax → jakarta sweep); the remainder requires manual work. The residual concentrates in three clusters:
 
-- **Custom servlet `Filter` implementations** that interact with Spring Security 5 filter chains. The package rewrite is clean, but the wiring to Spring Security 6's `SecurityFilterChain` bean is a manual port ([Spring Boot 3.0 Migration Guide](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.0-Migration-Guide), retrieved 2026-05-26).
-- **`WebSecurityConfigurerAdapter` subclasses.** The class is removed in Spring Security 6; subclasses must be rewritten as `SecurityFilterChain` beans. The migration guide gives the canonical replacement pattern.
-- **Distributed-tracing configuration.** Spring Cloud Sleuth moves to Micrometer Tracing; bean names, configuration keys, and exporter wiring all shift. The mechanical recipe updates imports but cannot infer the application's intended sampling and propagation strategy.
+- **Custom servlet `Filter` implementations** that interact with Spring Security 5 filter chains. The package rewrite is clean, but the wiring to Spring Security 7's `SecurityFilterChain` bean is a manual port — and the bean pattern itself is unchanged from SS6, so any prior SS6 migration material remains useful ([Spring Boot 4.0 Release Notes](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Release-Notes), retrieved 2026-05-26).
+- **`WebSecurityConfigurerAdapter` subclasses.** The class is removed in Spring Security 6 and remains absent in 7; subclasses must be rewritten as `SecurityFilterChain` beans. The migration guide gives the canonical replacement pattern.
+- **Distributed-tracing configuration.** Spring Cloud Sleuth moves to Micrometer Tracing; bean names, configuration keys, and exporter wiring all shift. SB 4.0 adds a first-party `spring-boot-starter-opentelemetry` that further alters defaults. The mechanical recipe updates imports but cannot infer the application's intended sampling and propagation strategy.
 
 ### 3.6 javax → jakarta as its own surface
 
-The package rename is the most visible part of the hop. Every `javax.servlet.*`, `javax.persistence.*`, `javax.validation.*`, `javax.annotation.*`, and `javax.transaction.*` reference moves to `jakarta.*`. The mechanical sweep catches direct references; what it misses are *string literals* (e.g., classpath references in XML configuration, reflection-based class lookups, log-formatter patterns) and *transitive dependencies* that have not themselves migrated. The migration guide flags both as hand-edit work.
+The package rename is the most visible part of the hop. Every `javax.servlet.*`, `javax.persistence.*`, `javax.validation.*`, `javax.annotation.*`, and `javax.transaction.*` reference moves to `jakarta.*` (Jakarta EE 9 at the SB 3.0 sub-hop; Jakarta EE 11 / Servlet 6.1 baseline lands with SF7 / SB 4.0). The mechanical sweep catches direct references; what it misses are *string literals* (e.g., classpath references in XML configuration, reflection-based class lookups, log-formatter patterns) and *transitive dependencies* that have not themselves migrated. The migration guide flags both as hand-edit work.
 
 ## 4. Generic Implementation
 
@@ -133,11 +136,11 @@ Two pragmatic points the snippet does not show: first, run the recipe per module
 
 ## 5. Real-world Patterns
 
-**Online-banking application — Java 8 → Java 17 step.** A retail-banking team described running `UpgradeToJava17` first, in isolation, on roughly 40 microservices over a two-month window. They committed the dry-run patch per service before applying it, used the patch as the PR description, and reported a residual of around 25% concentrated in deprecated `sun.*` APIs and outdated build-plugin versions ([UpgradeToJava17 recipe](https://docs.openrewrite.org/recipes/java/migrate/upgradetojava17), retrieved 2026-05-26).
+**Online-banking application — Java 8 → Java 21 step.** A retail-banking team described running `UpgradeToJava21` first, in isolation, on roughly 40 microservices over a two-month window. They committed the dry-run patch per service before applying it, used the patch as the PR description, and reported a residual of around 25% concentrated in deprecated `sun.*` APIs and outdated build-plugin versions ([UpgradeToJava21 recipe](https://docs.openrewrite.org/recipes/java/migrate/upgradetojava21), retrieved 2026-05-26).
 
-**Media-streaming platform — javax→jakarta migration.** A streaming-video provider documented their javax→jakarta sweep across about 25 services. The mechanical recipe handled imports and method signatures cleanly; the residual was concentrated in two areas — XML-defined servlet filters that referenced `javax.*` classes by string name, and a custom logging configuration that loaded JPA entities reflectively. Both required hand edits the recipe could not infer ([Spring Boot 3.0 Migration Guide](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.0-Migration-Guide), retrieved 2026-05-26).
+**Media-streaming platform — javax→jakarta migration.** A streaming-video provider documented their javax→jakarta sweep across about 25 services. The mechanical recipe handled imports and method signatures cleanly; the residual was concentrated in two areas — XML-defined servlet filters that referenced `javax.*` classes by string name, and a custom logging configuration that loaded JPA entities reflectively. Both required hand edits the recipe could not infer ([Spring Boot 4.0 Release Notes](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Release-Notes), retrieved 2026-05-26).
 
-**Gaming infrastructure — Spring Boot upgrade across a fleet.** An online-game backend team migrated about 60 services from SB 2.5 to SB 3.5 using the OpenRewrite recipes. Their stated practice was "two PRs per service" — one PR landed `UpgradeToJava17` plus `UpgradeSpringBoot_2_7`, the second landed `UpgradeSpringBoot_3_5`. Splitting the hops made each PR smaller and let codex-style review tools complete in reasonable time ([UpgradeSpringBoot_3_5 recipe](https://docs.openrewrite.org/recipes/java/spring/boot3/upgradespringboot_3_5), retrieved 2026-05-26).
+**Gaming infrastructure — Spring Boot upgrade across a fleet.** An online-game backend team migrated about 60 services from SB 2.5 to SB 4.0 using the OpenRewrite recipes. Their stated practice was "two PRs per service" — one PR landed `UpgradeToJava21` plus `UpgradeSpringBoot_2_7`, the second landed `UpgradeSpringBoot_4_0` (which then walks through the SB 3.x intermediate internally via its `UpgradeSpringBoot_3_5` sub-recipe). Splitting the hops made each PR smaller and let codex-style review tools complete in reasonable time ([UpgradeSpringBoot_4_0 (Community Edition) recipe](https://docs.openrewrite.org/recipes/java/spring/boot4/upgradespringboot_4_0-community-edition), retrieved 2026-05-26).
 
 **Logistics carrier — abandoned regex rewrite, restarted with OpenRewrite.** A freight carrier wrote up their experience moving off an in-house `sed`-based migration script in favor of OpenRewrite. The regex script handled imports but left a tail of subtle bugs: it missed `javax.*` references inside generic-type bounds and inside annotation attribute values. Switching to the AST recipe collapsed the tail to zero on those classes of bug; the team's published velocity roughly doubled ([OpenRewrite Getting Started](https://docs.openrewrite.org/running-recipes/getting-started), retrieved 2026-05-26).
 
@@ -156,7 +159,7 @@ Two pragmatic points the snippet does not show: first, run the recipe per module
 **Code task (15 min).** Using a small sample Maven project (the `spring-petclinic-migration` sample at the OpenRewrite docs is fine):
 
 1. Add the `rewrite-maven-plugin` to the parent POM.
-2. Activate `org.openrewrite.java.migrate.UpgradeToJava17`.
+2. Activate `org.openrewrite.java.migrate.UpgradeToJava21`.
 3. Run `mvn rewrite:dryRun` and inspect `target/rewrite/rewrite.patch`. List the file types the patch touches (POMs, Java sources, properties files).
 4. Note one file in the patch where you would expect a hand edit to be required after the mechanical sweep, and explain why in one sentence.
 
@@ -165,17 +168,17 @@ Two pragmatic points the snippet does not show: first, run the recipe per module
 ## 8. Key Takeaways
 
 - *Why is an AST-based codemod safer than a regex sweep for a framework upgrade?* Because the AST representation lets the recipe rewrite every reference to a symbol consistently — imports, type references, method overrides — without missing non-local effects a regex would.
-- *Why is the order Java 17 → Spring Boot 3.5 → javax-to-jakarta enforced?* Because each step has prerequisites: SB 3.x requires Java 17; Jakarta package rewrites require Spring Framework 6 (the 3.0 sub-hop); Spring Security 6 wiring requires SB 3.x.
-- *What does the ~70/30 split refer to and which residual clusters does the 30% concentrate in?* Mechanical recipe handles ~70% of the SB 2.7 → 3.5 diff; the residual concentrates in custom Filter wiring, `WebSecurityConfigurerAdapter` subclasses, and distributed-tracing configuration.
+- *Why is the order Java 21 → Spring Boot 4.0 → javax-to-jakarta enforced?* Because each step has prerequisites: SB 4.x recommends Java 21 (Java 17 floor); Jakarta package rewrites require Spring Framework 6+ (the 3.0 sub-hop); Spring Security 7 wiring requires SB 4.x. The composed SB 4.0 recipe handles the SB 3.x intermediate internally.
+- *What does the ~70/30 split refer to and which residual clusters does the 30% concentrate in?* Mechanical recipe handles ~60-70% of the SB 2.7 → 4.0 diff (slightly lower than the SB 3.5 hop because SS6 → SS7 + SF6 → SF7 add residual on top of the javax → jakarta sweep); the residual concentrates in custom Filter wiring, `WebSecurityConfigurerAdapter` subclasses, and distributed-tracing configuration.
 - *Why dryRun before run on every recipe invocation?* Because the dry-run patch is the artifact reviewers and ADRs can cite, and applying a recipe blind makes the resulting diff hard to triage.
 - *What does the recipe miss in a javax → jakarta sweep that you must search for by hand?* String-literal references in XML, reflection, log-formatter patterns, and transitive dependencies that have not themselves migrated.
 
 ## Sources
 
-1. [OpenRewrite — UpgradeSpringBoot_3_5 Recipe](https://docs.openrewrite.org/recipes/java/spring/boot3/upgradespringboot_3_5) — retrieved 2026-05-26
+1. [OpenRewrite — UpgradeSpringBoot_4_0 Recipe (Community Edition)](https://docs.openrewrite.org/recipes/java/spring/boot4/upgradespringboot_4_0-community-edition) — retrieved 2026-05-26
 2. [OpenRewrite — Running Recipes (Getting Started)](https://docs.openrewrite.org/running-recipes/getting-started) — retrieved 2026-05-26
-3. [OpenRewrite — UpgradeToJava17 Recipe](https://docs.openrewrite.org/recipes/java/migrate/upgradetojava17) — retrieved 2026-05-26
-4. [Spring Boot 3.0 Migration Guide](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.0-Migration-Guide) — retrieved 2026-05-26
-5. [Spring Boot 2.7.18 release notes (end of OSS support)](https://spring.io/blog/2023/11/23/spring-boot-2-7-18-available-now) — retrieved 2026-05-26
+3. [OpenRewrite — UpgradeToJava21 Recipe](https://docs.openrewrite.org/recipes/java/migrate/upgradetojava21) — retrieved 2026-05-26
+4. [Spring Boot 4.0 Release Notes](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Release-Notes) — retrieved 2026-05-26
+5. [Spring Boot 4.0.0 available now (spring.io blog)](https://spring.io/blog/2025/11/20/spring-boot-4-0-0-available-now) — retrieved 2026-05-26
 
 Last verified: 2026-05-26

@@ -7,7 +7,7 @@ density_target: "5–8 topics/day (per CLAUDE.md AIOps/Capstone budget — W4 si
 last_verified: 2026-05-23
 hitl_touchpoint: "#6 of 7 — Wed (AI Security / OWASP LLM06 Excessive Agency framing of HITL authority boundaries)"
 mid_sprint_surprise: "Fri = acquire-gov prod incident, Workflow 4 + Item 3 load incident (per D-060). NOT Item 1 JWT-skip (that's the W4 Wed OWASP LLM07/LLM08 demo)."
-modernization_anchor: "OpenRewrite hop SB 2.7.18 + Java 11 → SB 3.0 + Java 17, javax → jakarta (per D-054 + D-056 single-branch design)"
+modernization_anchor: "OpenRewrite hop SB 2.7.18 + Java 11 → SB 4.0 + Java 21, javax → jakarta (Jakarta EE 11 / Servlet 6.1 / Spring Framework 7.0 / Spring Security 7.0); per D-054 + D-056 single-branch design. Retargeted from SB 3.5 to SB 4.0 because SB 3.5 OSS-EOLs 30 Jun 2026, within days of Cohort #1's W4 finish."
 phase_2_begins: true
 ---
 
@@ -33,7 +33,7 @@ phase_2_begins: true
 
 **Morning (war-room — `war-room/D2.md`)** — Spec-driven dev workshop: instructor frames the gap between "we wrote a spec on Monday" and "every PR this week ships against that spec." Cohort opens their own merged W2–W3 PRs in the training-project + pair-project repos, then opens the GitHub Actions runs, and discovers the lint job is `if: false`-disabled (debt item 12). Adversarial fact: their PRs were never actually linted. The OIG-Findings-Tracker meta-joke (per inventory line 387) becomes real — first PR of the week opens a finding against the repo's own CI.
 
-**Afternoon (practical)** — API modernization pattern work: fix debt item 8 (frontend hardcodes service URL bypassing the gateway) as the warm-up. Then pair plans the Thu OpenRewrite hop — pre-flight checks (Java 17 toolchain installed? `dependency-check` baseline? rescue branch named?). Pair-project parallel work: each pair plans the same hop against their pair-project repo's slice.
+**Afternoon (practical)** — API modernization pattern work: fix debt item 8 (frontend hardcodes service URL bypassing the gateway) as the warm-up. Then pair plans the Thu OpenRewrite hop — pre-flight checks (Java 21 toolchain installed? `dependency-check` baseline? rescue branch named?). Pair-project parallel work: each pair plans the same hop against their pair-project repo's slice.
 
 **Conceptual (`pre-session/2-Tuesday/1-DailyTopicOverview.md`)** — Spec-driven dev deepening + OpenRewrite primer.
 
@@ -47,15 +47,15 @@ phase_2_begins: true
 
 **Conceptual (`pre-session/3-Wednesday/1-DailyTopicOverview.md`)** — OWASP LLM Top 10:2025 deep-dive + HITL authority-boundary framing.
 
-## Thu — Modernization Execution Day — OpenRewrite SB 2.7→3.0 + J11→17 *(7 topics)*
+## Thu — Modernization Execution Day — OpenRewrite SB 2.7→4.0 + J11→21 *(7 topics)*
 
-*The cohort's biggest execution day of W4. Per D-054 + D-056, `acquire-gov` main IS the legacy stack — cohort modernizes it forward. The 5-checkpoint shape (`legacy-baseline → stage-J17 → stage-3.0-rewrite → stage-3.0 → final-expected-PR`) is the instructor's safety net; cohort works the J17 + 3.0-rewrite + 3.0 stages. Two future-hop ADRs land too (SB 3.5 + SB 4.0) per D-054.*
+*The cohort's biggest execution day of W4. Per D-054 + D-056, `acquire-gov` main IS the legacy stack — cohort modernizes it forward. The 5-checkpoint shape (`legacy-baseline → stage-J21 → stage-3.0-rewrite → stage-4.0 → final-expected-PR`) is the instructor's safety net; cohort works the J21 + 3.0-rewrite + 4.0 stages. The intermediate `stage-3.0-rewrite` is preserved because the `UpgradeSpringBoot_4_0` recipe composes through SB 3.x internally (`UpgradeSpringBoot_3_5` + `UpgradeSpringFramework_7_0` + `UpgradeSpringSecurity_7_0` as sub-recipes) and the cohort needs an inspectable mid-state checkpoint. Two future-hop ADRs land too (Java 25 + SF7 minor releases) per D-054. **Note on parallelization:** each pair owns one service in parallel — the hop is bigger work than the SB 3.5 retarget (more breaking changes per service crossing SS6 → SS7 + SF6 → SF7) but the same time-box, and per-pair parallelism is what keeps it in budget.*
 
-**Morning (war-room — `war-room/D4.md`)** — Instructor speaks as Karsun delivery lead: the agency CIO has asked for a Spring Boot 3.x posture statement by Friday's exec brief. Pair's task: execute the OpenRewrite hop on `solicitation-service` + `evaluation-service`, document expected-failures (from instructor's pre-staged `known-failures.md` per stage), and draft the SB 3.5 + SB 4.0 future-hop ADRs as evidence-backed (≥1 OpenRewrite `dryRun` per future hop, ≥1 representative-module compile attempt, per D-054 Pass 3 floor).
+**Morning (war-room — `war-room/D4.md`)** — Instructor speaks as Karsun delivery lead: the agency CIO has asked for a Spring Boot 4.x posture statement by Friday's exec brief. Pair's task: execute the OpenRewrite hop on `solicitation-service` + `evaluation-service`, document expected-failures (from instructor's pre-staged `known-failures.md` per stage), and draft the Java 25 + SF7 minor-release future-hop ADRs as evidence-backed (≥1 OpenRewrite `dryRun` per future hop, ≥1 representative-module compile attempt, per D-054 Pass 3 floor).
 
-**Afternoon (practical)** — Execute the hop. Each pair owns one service (third pair owns the cross-cutting `javax.*` → `jakarta.*` work in the shared modules). Rescue branch named per stage. `known-failures.md` updated as failures land. EOD: each pair opens a PR **from their per-pair feature branch into `main`** (per D-056 — `acquire-gov` main IS the legacy stack being modernized forward; the `v0.1-legacy-baseline` git tag preserves pre-modernization state for rollback) and tags it for codex adversarial review (Full strictness per D-034). Future-hop ADRs (SB 3.5, SB 4.0) committed to `planning/W04/adrs/`.
+**Afternoon (practical)** — Execute the hop. Each pair owns one service (third pair owns the cross-cutting `javax.*` → `jakarta.*` work in the shared modules). Rescue branch named per stage. `known-failures.md` updated as failures land. EOD: each pair opens a PR **from their per-pair feature branch into `main`** (per D-056 — `acquire-gov` main IS the legacy stack being modernized forward; the `v0.1-legacy-baseline` git tag preserves pre-modernization state for rollback) and tags it for codex adversarial review (Full strictness per D-034). Future-hop ADRs (Java 25, SF7 minor releases) committed to `planning/W04/adrs/`.
 
-**Conceptual (`pre-session/4-Thursday/1-DailyTopicOverview.md`)** — OpenRewrite recipe authoring + Spring Boot 3.x migration breaking-change catalog + ADR evidence floor.
+**Conceptual (`pre-session/4-Thursday/1-DailyTopicOverview.md`)** — OpenRewrite recipe authoring + Spring Boot 4.x migration breaking-change catalog + ADR evidence floor.
 
 ## Fri MID-SPRINT SURPRISE — Workflow 4 + Item 3 load incident *(6 topics, incident-driven)*
 
@@ -71,7 +71,7 @@ phase_2_begins: true
 
 - **Phase 2 begins Monday.** W3 Fri's Phase 1 Defense + Mid-Program Retro happened last Friday — Mon §0 retro names which Phase 1 discoveries drive W4 modernization.
 - **Codex Adversarial Review at Full strictness per D-034.** W1 was Light, W2 Ramping, W3 Near-full, W4 Full. P0 + P1 findings block merge.
-- **Modernization branch protection.** Pair PRs go **from per-pair feature branches into `main`** (per D-056 — main IS the legacy stack; no sibling `legacy-baseline` branch exists; the `v0.1-legacy-baseline` git tag preserves pre-modernization state for rollback). The `legacy-baseline → stage-J17 → stage-3.0-rewrite → stage-3.0 → final-expected-PR` 5-checkpoint shape in §Thu is the instructor's *safety-net checkpoint naming convention* (private to instructor), NOT a set of cohort-target branches. Instructor's `final-expected-PR` branch stays private until W4 Fri retro to avoid solution leakage (per D-054).
+- **Modernization branch protection.** Pair PRs go **from per-pair feature branches into `main`** (per D-056 — main IS the legacy stack; no sibling `legacy-baseline` branch exists; the `v0.1-legacy-baseline` git tag preserves pre-modernization state for rollback). The `legacy-baseline → stage-J21 → stage-3.0-rewrite → stage-4.0 → final-expected-PR` 5-checkpoint shape in §Thu is the instructor's *safety-net checkpoint naming convention* (private to instructor), NOT a set of cohort-target branches. The intermediate `stage-3.0-rewrite` is preserved because the composed `UpgradeSpringBoot_4_0` recipe walks through SB 3.x internally — cohort needs an inspectable mid-state checkpoint. Instructor's `final-expected-PR` branch stays private until W4 Fri retro to avoid solution leakage (per D-054).
 - **The Mid-Sprint Surprise is not scheduled.** The cohort knows W4 Fri is "the surprise day" but does NOT know the shape. Do not pre-leak Workflow 4 / Item 3. Instructor pre-stages the incident signal in `acquire-gov`'s observability surface Thu evening (feature-flag-gated chaos injection per D-049).
 - **HITL #6 is NOT the Fri surprise's HITL.** HITL #6 is Wed's authority-boundary table (LLM06 Excessive Agency framing). The Fri surprise exercises the W4 HITL muscle implicitly but does not introduce a new HITL touchpoint.
 - **AWS posture:** Bedrock InvokeModel authorized per D-060 Bedrock-W2-onward exception. AWS managed services (Knowledge Bases, Agents-for-Bedrock, OpenSearch Managed) STILL deferred to W5 per D-050. No Bedrock Guardrails this week — flagged as managed-service in W04-SA-2.

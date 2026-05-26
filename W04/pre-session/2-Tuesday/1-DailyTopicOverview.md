@@ -8,7 +8,7 @@ estimated_total_minutes: 50
 last_verified: 2026-05-26
 fde_situations: [3, 5, 7, 9, 10]
 tech: [spec-driven-dev, OpenRewrite, GitHub-Actions, Spring-Cloud-Gateway, integration-mapping, validation-as-spec]
-sources_research_briefs: [research/spring-boot-2-7-to-3-x-20260525.md]
+sources_research_briefs: [research/spring-boot-2-7-to-4-x-20260525.md]
 author: instructor
 ---
 
@@ -57,33 +57,36 @@ PDF column lead: **Brownfield Planning + Complete Brownfield-analysis ADR for Si
 A brownfield-analysis ADR is a different shape from Mon's scope ADR. It names *the existing system as it stands*:
 
 1. **Module under analysis** — `solicitation-service` (or `evaluation-service`, or the shared `javax.*` modules — assigned at war-room).
-2. **Current state pinned** — Spring Boot 2.7.18, Java 11, javax.persistence + javax.servlet + javax.validation, Spring Security 5.x (`WebSecurityConfigurerAdapter`), AWS SDK v1 (`com.amazonaws.*`).
-3. **Target state pinned** — Spring Boot 3.5.x, Java 17, `jakarta.*`, Spring Security 6.x (`SecurityFilterChain` bean). AWS SDK v1→v2 hop is **W5 work per D-050** — flag it, don't execute it Thu.
-4. **OpenRewrite recipes applied** — `org.openrewrite.java.migrate.UpgradeToJava17` + `org.openrewrite.java.spring.boot3.UpgradeSpringBoot_3_5`. (NOT `UpgradeSpringBoot_3_0` — pin 3.5 per the SB 3.x research brief: 3.4.x OSS support already ended 31 Dec 2025; 3.5 is the current OSS-supported target.)
-5. **Pre-flight checks named** — Java 17 toolchain in container (no host JDK pinning), `mvn rewrite:dryRun` baseline captured, rescue branch name committed.
-6. **Hand edits required (the 30%)** — D-054 Pass 3 evidence floor says you must name ≥1 hand edit OpenRewrite won't handle. Likely candidates: custom `javax.servlet.Filter` subclasses, `WebSecurityConfigurerAdapter` subclasses, Spring Cloud Sleuth → Micrometer Tracing.
+2. **Current state pinned** — Spring Boot 2.7.18, Java 11, javax.persistence + javax.servlet + javax.validation (Jakarta EE 8), Spring Security 5.x (`WebSecurityConfigurerAdapter`), AWS SDK v1 (`com.amazonaws.*`).
+3. **Target state pinned** — Spring Boot 4.0.x, Java 21, `jakarta.*` (Jakarta EE 11 / Servlet 6.1), Spring Framework 7.0, Spring Security 7.0 (`SecurityFilterChain` bean pattern unchanged from SS6 — only the version pin moves). AWS SDK v1→v2 hop is **W5 work per D-050** — flag it, don't execute it Thu. **Why 4.0 and not 3.5:** SB 3.5 OSS-EOLs 30 Jun 2026 — within days of Cohort #1's W4 finish. Landing on a version that flips to commercial-only at W5 = federal-compliance posture failure. SB 4.0 is OSS-supported through 31 Dec 2026 (~6 months runway). Java 21 (not 17) because SF7's recommended runtime is Java 21+ (virtual threads, sealed classes, pattern matching).
+4. **OpenRewrite recipes applied** — `org.openrewrite.java.migrate.UpgradeToJava21` + `org.openrewrite.java.spring.boot4.UpgradeSpringBoot_4_0` (Community Edition). The 4.0 recipe composes `UpgradeSpringBoot_3_5` + `UpgradeSpringFramework_7_0` + `UpgradeSpringSecurity_7_0` as sub-recipes — so the 2.7→3.5 path happens inside the same recipe invocation; you don't run a separate 3.5 hop.
+5. **Pre-flight checks named** — Java 21 toolchain in container (no host JDK pinning), `mvn rewrite:dryRun` baseline captured, rescue branch name committed.
+6. **Hand edits required (the 30%)** — D-054 Pass 3 evidence floor says you must name ≥1 hand edit OpenRewrite won't handle. Likely candidates: custom `javax.servlet.Filter` subclasses, `WebSecurityConfigurerAdapter` subclasses, Spring Cloud Sleuth → Micrometer Tracing, SS6 → SS7 wiring residuals, SF6 → SF7 deprecated-API residuals.
 7. **Rollback** — the `v0.1-legacy-baseline` git tag (per D-056). No sibling "modern" branch exists — main IS the legacy stack being modernized forward.
 
 This ADR is the artifact that lets Codex Full (lands Thu per D-034) say *"yes, this hop was planned, not improvised."*
 
 ## 4. OpenRewrite primer — the recipe model (8 min)
 
-OpenRewrite is a refactoring engine that applies *recipes* (declarative AST transforms) to a codebase. For Spring Boot 2.7→3.5 + Java 11→17 + `javax.*` → `jakarta.*`, OpenRewrite composes ~30 sub-recipes — one command, hundreds of edits, deterministic output. It does roughly 70% of the work; you hand-edit the remaining 30%.
+OpenRewrite is a refactoring engine that applies *recipes* (declarative AST transforms) to a codebase. For Spring Boot 2.7→4.0 + Java 11→21 + `javax.*` → `jakarta.*`, OpenRewrite composes ~30+ sub-recipes — one command, hundreds of edits, deterministic output. It does roughly 70% of the work; you hand-edit the remaining 30% (expect that residual to lean heavier than a SB 3.5 hop because SS6 → SS7 + SF6 → SF7 stack on top of the javax → jakarta sweep).
 
 The Thu hop's 5-checkpoint shape (instructor's private safety-net naming, per W04 PLAN §Thu — NOT cohort-target branches):
 
 ```
-legacy-baseline → stage-J17 → stage-3.0-rewrite → stage-3.0 → final-expected-PR
+legacy-baseline → stage-J21 → stage-3.0-rewrite → stage-4.0 → final-expected-PR
 ```
 
-You work the J17 + 3.0-rewrite + 3.0 stages on a per-pair feature branch into `main` (per D-056). Each stage gets a rescue branch. Updates land in `planning/W04/known-failures.md` as failures appear.
+You work the J21 + 3.0-rewrite + 4.0 stages on a per-pair feature branch into `main` (per D-056). Each stage gets a rescue branch. Updates land in `planning/W04/known-failures.md` as failures appear. The intermediate `stage-3.0-rewrite` checkpoint is preserved because the `UpgradeSpringBoot_4_0` recipe walks through SB 3.x internally (composes `UpgradeSpringBoot_3_5` + `UpgradeSpringFramework_7_0` + `UpgradeSpringSecurity_7_0`) — having an inspectable mid-state matters for triage when the 4.0 stage breaks.
 
-**`dryRun` is your friend.** Run `mvn rewrite:dryRun` first to see the patch without applying it. D-054 Pass 3 evidence floor requires `dryRun` output in your future-hop ADRs (SB 3.5 → 4.0 land Thu as evidence-backed paper ADRs).
+**`dryRun` is your friend.** Run `mvn rewrite:dryRun` first to see the patch without applying it. D-054 Pass 3 evidence floor requires `dryRun` output in your future-hop ADRs (Java 25 + SF7 minor releases land Thu as evidence-backed paper ADRs).
 
-[OpenRewrite Spring Boot 3.0 Migration Recipe, retrieved 2026-05-23 via /web-research, https://docs.openrewrite.org/recipes/java/spring/boot3/upgradespringboot_3_0]
-[Spring Boot 3.5 Release Notes, retrieved 2026-05-25 via /web-research (Firecrawl), https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.5-Release-Notes] — focus on the breaking-changes section + the `heapdump` actuator + `.enabled` tightenings.
+**Why 4.0 and not 3.5:** the curriculum was earlier scoped to SB 3.5; it was retargeted because SB 3.5 OSS support ends 30 Jun 2026 — within days of Cohort #1's W4 finish. SB 4.0 OSS-supported through 31 Dec 2026 (~6 months runway). Federal-modernization posture demands an OSS-supported target; commercial-only is a procurement red flag.
 
-**`jakarta.*` migration vocabulary** (terms you'll hear Tue and Thu): every `javax.persistence`, `javax.servlet`, `javax.validation` import flips. `WebSecurityConfigurerAdapter` (Spring Security 5) is removed in 6 → replaced by `SecurityFilterChain` bean. The full 2.7.18 baseline is 3 generations behind OSS support (per `research/spring-boot-2-7-to-3-x-20260525.md` — 2.7 OSS support ended 30 Jun 2023). That's the framing for the agency CIO's Friday exec brief: "we are on unsupported software."
+[OpenRewrite Spring Boot 4.0 Migration Recipe (Community Edition), retrieved 2026-05-26 via /web-research, https://docs.openrewrite.org/recipes/java/spring/boot4/upgradespringboot_4_0-community-edition]
+[OpenRewrite UpgradeToJava21 Recipe, retrieved 2026-05-26 via /web-research, https://docs.openrewrite.org/recipes/java/migrate/upgradetojava21]
+[Spring Boot 4.0.0 available now, retrieved 2026-05-25 via /web-research (Firecrawl), https://spring.io/blog/2025/11/20/spring-boot-4-0-0-available-now] — focus on the modularization + JSpecify null-safety + Java 25 support + OpenTelemetry starter headline features.
+
+**`jakarta.*` migration vocabulary** (terms you'll hear Tue and Thu): every `javax.persistence`, `javax.servlet`, `javax.validation` import flips (Jakarta EE 11 / Servlet 6.1 namespace in SB 4.0). `WebSecurityConfigurerAdapter` (Spring Security 5) is removed in 6 → replaced by `SecurityFilterChain` bean; the same bean pattern carries into Spring Security 7.0 — only the version pin moves. The full 2.7.18 baseline is 3 generations behind OSS support (per `research/spring-boot-2-7-to-4-x-20260525.md` — 2.7 OSS support ended 30 Jun 2023). That's the framing for the agency CIO's Friday exec brief: "we are on unsupported software."
 
 ## 5. Validation-as-spec Discipline — the meta-joke (8 min)
 
@@ -108,14 +111,14 @@ Two ADR shapes show up in W4:
 
 A scope ADR without a per-module brownfield ADR is paper. A per-module brownfield ADR without a scope ADR is improvisation. Both ship Mon–Tue; both gate Thu's hop.
 
-A third ADR shape lands Thursday: **future-hop ADR** (SB 3.5 → 4.0, Java 17 → 21). D-054 Pass 3 floor: ≥1 OpenRewrite `dryRun` per future hop + ≥1 representative-module compile attempt + named breaking changes + ≥1 hand edit identified. **Future-hop ADRs are evidence-backed paper exercises — they ship in Fri Live Defense and get cut**, per D-054. Not executed this week.
+A third ADR shape lands Thursday: **future-hop ADR** (Java 21 → Java 25, and SF7.0 → SF7-minor / SB 4.x-minor). D-054 Pass 3 floor: ≥1 OpenRewrite `dryRun` per future hop + ≥1 representative-module compile attempt + named breaking changes + ≥1 hand edit identified. **Future-hop ADRs are evidence-backed paper exercises — they ship in Fri Live Defense and get cut**, per D-054. Not executed this week.
 
 ## 7. Further reading (optional) + tomorrow's questions
 
-- *(optional)* [Spring Security 5 → 6 migration](https://docs.spring.io/spring-security/reference/5.8/migration/index.html) (~20 min), retrieved 2026-05-23 via /web-research. Useful background; per D-056 you do execute `WebSecurityConfigurerAdapter` → `SecurityFilterChain` on `solicitation-service` + `evaluation-service` because they're hopping to SB 3.5. Read this if your assigned service has a custom security config.
+- *(optional)* [Spring Security 5 → 6 migration](https://docs.spring.io/spring-security/reference/5.8/migration/index.html) (~20 min), retrieved 2026-05-23 via /web-research. Useful background; per D-056 you do execute `WebSecurityConfigurerAdapter` → `SecurityFilterChain` on `solicitation-service` + `evaluation-service` because they're hopping to SB 4.0 (which composes through SS6 to SS7 — the `SecurityFilterChain` bean pattern is the same as SS6's; only the version pin moves). Read this if your assigned service has a custom security config.
 - *(optional)* [OpenRewrite — Authoring a custom recipe](https://docs.openrewrite.org/authoring-recipes/recipe-development-environment) (~10 min). Skip unless you intend to ship a custom recipe for a per-pair-unique debt item (per D-059).
 - *(optional)* [GitHub Actions — Conditional job execution (`if:`)](https://docs.github.com/en/actions/using-jobs/using-conditions-to-control-job-execution) (~5 min), retrieved 2026-05-23 via /web-research. So you recognise the `if: false` pattern when you see it Tuesday morning.
-- Reference brief: `research/spring-boot-2-7-to-3-x-20260525.md` (3.5.14 current + 2.7.18 OSS-EOL + `jakarta.*` migration vocabulary).
+- Reference brief: `research/spring-boot-2-7-to-4-x-20260525.md` (3.5.14 current + 2.7.18 OSS-EOL + `jakarta.*` migration vocabulary).
 
 **Two questions to bring to Tuesday war-room** (workshop opens with these):
 

@@ -23,8 +23,8 @@ retro_shape: post-incident (Mid-Sprint Surprise replaces standard retro framing)
 | PRs merged this week (acquire-gov + pair-project) | <int> |
 | Codex P0/P1 findings unaddressed (carried into W5) | <int> |
 | Scenario-alternatives ADRs completed (W04-SA-1/2/3) | <int of 3> |
-| Modernization PRs reaching `stage-3.0` green CI | <int of 3 — one per pair / service> |
-| Future-hop ADRs with Pass 3 evidence (SB 3.5 + SB 4.0) | <int of 6 — 2 per pair> |
+| Modernization PRs reaching `stage-4.0` green CI | <int of 3 — one per pair / service> |
+| Future-hop ADRs with Pass 3 evidence (Java 25 + SF7 minor releases) | <int of 6 — 2 per pair> |
 | AI Security PRs closing Item 9 (4 stored-content surfaces) | <int of 4> |
 | HITL #6 authority-boundary table complete (8 endpoints × 4 cols) | <yes/no> |
 | Mid-Sprint Surprise: time to first symptom diagnosis | <minutes — target ≤20> |
@@ -68,7 +68,7 @@ Per `pipeline/COVERAGE.md` FDE-situation mapping:
 - **Situation 5 (Spec-driven dev discipline):** Tue workshop discovery. <how the cohort responded to "your PRs weren't actually linted">
 - **Situation 6 (Cross-service correlation under failure):** Fri Mid-Sprint Surprise. <did the cohort hit the W3C-traceparent gap as the proximate W5 deliverable>
 - **Situation 7 (Production-quality LLM under load):** Fri surprise — Item 3 is LLM10:2025 in practice. <did the cohort name this connection>
-- **Situation 8 (Brownfield modernization):** Thu OpenRewrite hop. <which pair reached `stage-3.0` green CI>
+- **Situation 8 (Brownfield modernization):** Thu OpenRewrite hop (SB 2.7→4.0 + J11→21). <which pair reached `stage-4.0` green CI>
 - **Situation 9 (Security threat modeling):** Wed AI Security Day. <was the OWASP 2025 vs 2023 ID delta cleanly handled>
 - **Situation 11 (HITL discipline under authority gating):** Wed HITL #6 + Fri amended-plan-spec. <was HITL #6's authority-boundary table actually defended Fri>
 
