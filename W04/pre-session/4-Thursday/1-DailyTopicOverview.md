@@ -9,7 +9,7 @@ last_verified: 2026-05-26
 fde_situations: [3, 5, 7, 9, 10, 11]
 tech: [OpenRewrite, Spring-Boot-3.0, Java-17, jakarta-EE-9, javax-migration]
 sources_research_briefs:
-  - research/spring-boot-3-x-20260525.md
+  - research/spring-boot-2-7-to-3-x-20260525.md
   - research/aws-sdk-v1-to-v2-migration-20260525.md
 author: instructor
 ---
@@ -22,7 +22,7 @@ author: instructor
 
 The single-branch design decision matters more than any recipe you'll run tomorrow. Per D-056, there is **no sibling "modern" branch** for `acquire-gov`. Main IS the legacy stack: Spring Boot 2.7.18, Java 11, `javax.*`, Spring Security 5, AWS SDK v1. The `v0.1-legacy-baseline` git tag preserves pre-modernization state for rollback; your pair's feature branch is the working surface; PRs land into `main`.
 
-Why this is "security work, not aesthetic": Spring Boot 2.7.18 has been **OSS-unsupported since 30 Jun 2023** (commercial Tanzu support only) per `research/spring-boot-3-x-20260525.md`. AWS SDK for Java 1.x reached **end-of-support 31 Dec 2025** per `research/aws-sdk-v1-to-v2-migration-20260525.md`. Acquire-gov is shipping today on two unsupported runtimes. The agency CIO's "Spring Boot 3.x posture statement by Friday" ask isn't cosmetic; it's the posture statement the OIG would ask for.
+Why this is "security work, not aesthetic": Spring Boot 2.7.18 has been **OSS-unsupported since 30 Jun 2023** (commercial Tanzu support only) per `research/spring-boot-2-7-to-3-x-20260525.md`. AWS SDK for Java 1.x reached **end-of-support 31 Dec 2025** per `research/aws-sdk-v1-to-v2-migration-20260525.md`. Acquire-gov is shipping today on two unsupported runtimes. The agency CIO's "Spring Boot 3.x posture statement by Friday" ask isn't cosmetic; it's the posture statement the OIG would ask for.
 
 **Question to bring to morning war-room:** *which of acquire-gov's two unsupported runtimes (SB 2.7.18 OSS-EOL or AWS SDK v1 EoS) does your service touch most invasively?* The AWS SDK v1→v2 hop is **out of scope** for tomorrow per D-054 — but it's the cross-cutting context your future-hop ADRs reference.
 
@@ -61,12 +61,12 @@ Primary reading tonight:
 
 ## 4. Workflow Augmentation vs Replacement — what OpenRewrite catches vs what you hand-edit (8 min)
 
-The ~70/30 split is the load-bearing number: OpenRewrite handles **~70%** of the SB 2.7→3.0 hop deterministically per `research/spring-boot-3-x-20260525.md`; **~30%** requires hand edits. The principle the cohort exercises tomorrow is **augmentation, not replacement** — the human owns the judgment call on every hand edit; the tool does the mechanical sweep.
+The ~70/30 split is the load-bearing number: OpenRewrite handles **~70%** of the SB 2.7→3.0 hop deterministically per `research/spring-boot-2-7-to-3-x-20260525.md`; **~30%** requires hand edits. The principle the cohort exercises tomorrow is **augmentation, not replacement** — the human owns the judgment call on every hand edit; the tool does the mechanical sweep.
 
 Canonical 30%-hand-edit clusters to expect from your `dryRun` patch:
 
 - Custom `javax.servlet.Filter` implementations — the namespace rewrite is clean, but interactions with Spring Security 5 filter chains often need manual wiring against Spring Security 6's `SecurityFilterChain` bean pattern.
-- Custom `WebSecurityConfigurerAdapter` subclasses — **removed in Spring Security 6.x.** Hand-rewrite as a `SecurityFilterChain` bean (snippet in `research/spring-boot-3-x-20260525.md` §5).
+- Custom `WebSecurityConfigurerAdapter` subclasses — **removed in Spring Security 6.x.** Hand-rewrite as a `SecurityFilterChain` bean (snippet in `research/spring-boot-2-7-to-3-x-20260525.md` §5).
 - Spring Cloud Sleuth → Micrometer Tracing — distributed-tracing config keys + bean wiring shift.
 - `application.properties` boolean-property strictness (per SB 3.5 tightening) — `.enabled` properties now require strict `true`/`false`; anything ≠ `false` no longer means "enabled."
 
@@ -94,7 +94,7 @@ Additional reading for the future-hop ADRs:
 - [Spring Boot 3.5 Release Notes](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.5-Release-Notes) (~10 min), retrieved 2026-05-23 via /web-research.
 - *(optional, for the SB 4.0 ADR)* [Spring Boot 4.0.0 available now](https://spring.io/blog/2025/11/20/spring-boot-4-0-0-available-now), published 2025-11-20, retrieved 2026-05-25 via /web-research. SB 4.0 GA'd 20 Nov 2025; current 4.0.6. Cohort's recommendation: 3.5.x first (OSS support ends 30 Jun 2026 — short runway, but lower jump risk); 4.0 named as the "what comes next" answer.
 
-[!instructor-review] *3.5.x OSS support ends 30 Jun 2026 — 36 days from `last_verified`. Should the SB 3.5 future-hop ADR carry an explicit "you'd recommend 4.0 directly if the team has bandwidth for one bigger jump" answer? Surfacing per `spring-boot-3-x-20260525.md` §6.*
+[!instructor-review] *3.5.x OSS support ends 30 Jun 2026 — 36 days from `last_verified`. Should the SB 3.5 future-hop ADR carry an explicit "you'd recommend 4.0 directly if the team has bandwidth for one bigger jump" answer? Surfacing per `spring-boot-2-7-to-3-x-20260525.md` §6.*
 
 ## 6. Graceful Degradation + Rollback Rehearsal (8 min)
 

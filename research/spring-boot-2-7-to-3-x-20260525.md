@@ -1,12 +1,16 @@
 ---
 template: research-brief
-tech: Spring Boot 3.x / 4.x (Java back-end framework)
-version_pinned: "3.5.14 (current 3.x LTS-grade, OSS ends 30 Jun 2026); 4.0.6 (current major GA)"
+tech: Spring Boot 2.7 → 3.x migration (Java back-end framework)
+version_pinned: "acquire-gov baseline: 2.7.18 + Java 11; W4 modernization target: 3.5.14 (OSS ends 30 Jun 2026); SB 4.0.6 documented as future-hop ADR (not W4 execution target)"
 last_verified: 2026-05-25
 last_verified_via: web-research (Firecrawl self-hosted)
 recency_window: foundation-stable 12mo
 sources_count: 6
 target_weeks: [W04, W05]
+modernization_scope:
+  current_state: "Spring Boot 2.7.18 + Java 11 + javax.* + AWS SDK v1 (acquire-gov + all 3 pair-project repos)"
+  w4_target: "Spring Boot 3.5.x + Java 17 + jakarta.* (OpenRewrite recipe: org.openrewrite.java.spring.boot3.UpgradeSpringBoot_3_5)"
+  future_hop: "Spring Boot 4.0.x (Spring Framework 7 + modularization) — ADR future-hop with dryRun evidence, NOT W4 execution"
 candidates_deferred: []
 known_bad_patterns_flagged:
   - id: spring-boot-2x-javax
@@ -19,9 +23,10 @@ known_bad_patterns_checked: true
 author: research-subagent
 ---
 
-# Tech research brief — Spring Boot 3.x / 4.x
+# Tech research brief — Spring Boot 2.7 → 3.x migration
 
-Last verified: 2026-05-25 · Recency window applied: foundation-stable 12mo · Pinned versions: 3.5.14 (current 3.x) + 4.0.6 (current 4.x major)
+Last verified: 2026-05-25 · Recency window applied: foundation-stable 12mo
+**Cohort #1 scope:** acquire-gov + 3 pair-projects start on SB 2.7.18 + Java 11. W4 modernization target = SB 3.5.x + Java 17 (OpenRewrite recipe `UpgradeSpringBoot_3_5`). SB 4.0.x documented as future-hop ADR exercise — not W4 execution target.
 
 ## 1. What it is (3–5 sentences, no jargon)
 

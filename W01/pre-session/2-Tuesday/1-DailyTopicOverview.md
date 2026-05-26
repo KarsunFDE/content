@@ -136,7 +136,7 @@ The pattern: every request gets a **correlation ID** at the gateway (UUID). The 
 **Reflection question:** the api-gateway is the only place JWT signature validation happens. What's the security consequence of a bypass route around it? (Hold this for the Angular tour — gap 1 lands live.)
 
 **Read / watch:**
-- The `api-gateway/SecurityConfig.java` file in acquire-gov (Spring Security 5.x style on the 2.7.18 baseline — uses the now-removed `WebSecurityConfigurerAdapter`; the W4 modernization migrates to the component-based `SecurityFilterChain` bean). [Spring Boot 3.x research brief](../../../research/spring-boot-3-x-20260525.md) §3 documents the migration.
+- The `api-gateway/SecurityConfig.java` file in acquire-gov (Spring Security 5.x style on the 2.7.18 baseline — uses the now-removed `WebSecurityConfigurerAdapter`; the W4 modernization migrates to the component-based `SecurityFilterChain` bean). [Spring Boot 3.x research brief](../../../research/spring-boot-2-7-to-3-x-20260525.md) §3 documents the migration.
 - The `ai-orchestrator/main.py` middleware that reads `X-Correlation-ID` from the request and pushes it into Python's `contextvars`.
 
 ## 5. CI/CD + Bedrock prerequisites — GHA workflows, AWS SSO, model access verification (8 min)
@@ -230,7 +230,7 @@ The 12 deliberate brownfield-debt items are seeded into `acquire-gov` on purpose
 
 **Read / watch:**
 - `training-project/README.md` in `acquire-gov` — the canonical 12-item list (don't read in advance if you want to discover them live; skim if you want the map first).
-- [Spring Boot 3.x research brief](../../../research/spring-boot-3-x-20260525.md) — context on items 2 + 4 (the 2.7.18 → 3.5+ jump + the `javax` → `jakarta` namespace migration).
+- [Spring Boot 3.x research brief](../../../research/spring-boot-2-7-to-3-x-20260525.md) — context on items 2 + 4 (the 2.7.18 → 3.5+ jump + the `javax` → `jakarta` namespace migration).
 - [Angular 17+ research brief](../../../research/angular-17-plus-20260525.md) — context on the Angular 17 baseline + post-17 evolution (standalone components, signals, `@if`/`@for` control flow).
 - [AWS SDK v1 → v2 migration research brief](../../../research/aws-sdk-v1-to-v2-migration-20260525.md) — context on item 4.
 
@@ -295,7 +295,7 @@ If you have time between session blocks and don't yet have an environment ready,
 
 - Karsun ReDuX context — AWS Public Sector Blog post (cited in topic 7), retrieved 2026-05-22 via /web-research.
 - GalentAI positioning + engine catalog — galent.com homepage + Insights blog (cited in topic 7), retrieved 2026-05-22 via /web-research.
-- Spring Boot 3.x current state — [`research/spring-boot-3-x-20260525.md`](../../../research/spring-boot-3-x-20260525.md), retrieved 2026-05-25 via /web-research.
+- Spring Boot 3.x current state — [`research/spring-boot-2-7-to-3-x-20260525.md`](../../../research/spring-boot-2-7-to-3-x-20260525.md), retrieved 2026-05-25 via /web-research.
 - Angular 17 baseline + post-17 ecosystem state — [`research/angular-17-plus-20260525.md`](../../../research/angular-17-plus-20260525.md), retrieved 2026-05-25 via /web-research.
 - AWS Bedrock Claude model catalog — [`research/bedrock-claude-catalog-20260522.md`](../../../research/bedrock-claude-catalog-20260522.md), retrieved 2026-05-22 via /web-research (WebSearch+WebFetch fallback).
 - AWS SDK v1 → v2 migration — [`research/aws-sdk-v1-to-v2-migration-20260525.md`](../../../research/aws-sdk-v1-to-v2-migration-20260525.md), retrieved 2026-05-25 via /web-research.

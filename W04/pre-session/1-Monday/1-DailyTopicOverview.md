@@ -8,7 +8,7 @@ estimated_total_minutes: 50
 last_verified: 2026-05-26
 fde_situations: [3, 4, 5, 6, 10, 11]
 tech: [spec-driven-dev, ADRs, OWASP-LLM-Top-10-2025, AI-backlog-generation, scenario-design-planning]
-sources_research_briefs: [research/owasp-llm-top-10-20260522.md, research/spring-boot-3-x-20260525.md]
+sources_research_briefs: [research/owasp-llm-top-10-20260522.md, research/spring-boot-2-7-to-3-x-20260525.md]
 author: instructor
 ---
 
@@ -84,7 +84,7 @@ Bridging to Wed, you need recognition-tier vocabulary for OWASP LLM Top 10:2025.
 
 ## 7. Further reading (optional)
 
-- [Spring Boot 2.7 to 3.0 Migration Guide](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.0-Migration-Guide) (~15 min read), retrieved 2026-05-23 via /web-research. Skim only — Thursday is when this matters; tonight is recognition-tier. Cross-reference `research/spring-boot-3-x-20260525.md` for the cohort's pinned version posture (3.5.14 current 3.x; 4.0.6 current major; 2.7.18 OSS-EoL since 30 Jun 2023).
+- [Spring Boot 2.7 to 3.0 Migration Guide](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.0-Migration-Guide) (~15 min read), retrieved 2026-05-23 via /web-research. Skim only — Thursday is when this matters; tonight is recognition-tier. Cross-reference `research/spring-boot-2-7-to-3-x-20260525.md` for the cohort's pinned version posture (3.5.14 current 3.x; 4.0.6 current major; 2.7.18 OSS-EoL since 30 Jun 2023).
 - [NIST AI RMF 1.0](https://www.nist.gov/itl/ai-risk-management-framework) (~30 min) — companion framework to OWASP. Less prescriptive, but federal-modernization-shaped. Retrieved 2026-05-23 via /web-research. Useful background for W6 security attestation, not W4 Wed.
 - *(optional)* [The Lifecycle of a Code AI Tool — Spec-driven dev framing](https://lethain.com/spec-driven-development/) (~10 min read), retrieved 2026-05-23 via /web-research. *Skip if you already have a strong mental model of spec-driven-as-discipline.*
 
