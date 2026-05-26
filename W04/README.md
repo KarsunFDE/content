@@ -54,9 +54,10 @@ Coverage check: **10 of 10** entries land in W4 with a concrete acquire-gov surf
 
 ## Folder shape
 
+Daily pre-session reading lives at `pre-session/<N-DayName>/1-DailyTopicOverview.md` — one per teaching day, 5–8 topics/day cap. Authored by `pre-session-author`. See `weeks-overview.md` for which days each week has.
+
 | Subfolder | Artifact type | Skill that authors it |
 |-----------|---------------|------------------------|
-| `pre-session/D1..D5.md` | Pre-session reading (one per day, 5–8 topics/day cap) | `pre-session-author` |
 | `war-room/D1..D4.md` | Morning war-room scenario | `war-room-scenario` |
 | `war-room/Fri-mid-sprint-surprise.md` | **Mid-Sprint Surprise instructor script + incident shape + scoring rubric** | hand-authored per D-049 |
 | `scenarios/W04-SA-1..3.md` | Alternative-tech scenario (3 per week per D-040, 2–3 candidate techs each) | `scenario-alternatives` |

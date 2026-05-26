@@ -37,9 +37,10 @@ Per `training-project/week-dependency-map.md` §W6 + `feature-inventory-target.m
 
 ## How this folder gets filled
 
+Daily pre-session reading lives at `pre-session/<N-DayName>/1-DailyTopicOverview.md` — one per teaching day. W06 (Cohort #1) only has D1–D3 (Mon–Wed): **no D4** — Thu = gate, no advance reading needed; **no D5** — Fri = holiday. Authored by `pre-session-author`. See `weeks-overview.md` for which days each week has.
+
 | Subfolder | Artifact type | Skill / source |
 |-----------|---------------|----------------|
-| `pre-session/D1.md..D3.md` | Pre-session reading (3 days; **no D4** — Thu = gate, no advance reading needed; **no D5** — Fri = holiday) | `pre-session-author` |
 | `war-room/D1.md..D3.md` + `war-room/D4-defense-showcase-retro.md` | Morning war-room (D1-D3) + gate-day full agenda (D4) | `war-room-scenario` (D1-D3); instructor (D4 — gate is reproducible from this file) |
 | `scenarios/` | 3 W6-specific deliverability prompts (handoff depth, HITL boundary table shape, eval report shape) — NOT live-defense-eligible (no Fri Live Defense W6); used as **deliverable-shaping exercises** Tue afternoon | `scenario-alternatives` (adapted) |
 | `retros/` | **Cohort Retro template** (programme-wide retrospective format; captures lessons for Cohort #2) | `weekly-retro` (adapted to cohort scope) |

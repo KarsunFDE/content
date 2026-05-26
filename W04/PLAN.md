@@ -23,7 +23,7 @@ phase_2_begins: true
 
 **Afternoon (practical)** — Pair authors `planning/W04/` six-artifact set. Two ADRs land today as draft commits: (a) **W4 Modernization Scope ADR** (which 2–3 of the 12 debt items + per-pair-unique items the pair will execute this week — must include the OpenRewrite hop or explain why deferred); (b) **AI Security Threat Model ADR** for Wed — pair walks the 8 ai-orchestrator endpoints (per `feature-inventory-target.md`) against OWASP LLM01–LLM10:2025 and names which apply where. No code lands Monday.
 
-**Conceptual (`pre-session/D1.md`)** — Phase 2 framing + spec-driven dev as living discipline + AI Security pre-read.
+**Conceptual (`pre-session/1-Monday/1-DailyTopicOverview.md`)** — Phase 2 framing + spec-driven dev as living discipline + AI Security pre-read.
 
 **Diagnostic recast (EOD):** *"name the single Phase 1 finding that most narrows the W4 modernization scope — and the single discovery your pair did NOT yet make."* Feeds Tue spec-driven workshop seeding.
 
@@ -35,7 +35,7 @@ phase_2_begins: true
 
 **Afternoon (practical)** — API modernization pattern work: fix debt item 8 (frontend hardcodes service URL bypassing the gateway) as the warm-up. Then pair plans the Thu OpenRewrite hop — pre-flight checks (Java 17 toolchain installed? `dependency-check` baseline? rescue branch named?). Pair-project parallel work: each pair plans the same hop against their pair-project repo's slice.
 
-**Conceptual (`pre-session/D2.md`)** — Spec-driven dev deepening + OpenRewrite primer.
+**Conceptual (`pre-session/2-Tuesday/1-DailyTopicOverview.md`)** — Spec-driven dev deepening + OpenRewrite primer.
 
 ## Wed AI Security Day — OWASP LLM Top 10 + HITL #6 + dedicated research slot *(8 topics, at upper cap)*
 
@@ -45,7 +45,7 @@ phase_2_begins: true
 
 **Afternoon (practical, AI Security + dedicated /web-research)** — Three exercises in sequence: (1) **Item 1 JWT-skip exploit demo** (OWASP LLM07 + LLM08 — pair builds a working exploit that mints an unsigned JWT, hits `GET /api/public/opportunities`, escalates via downstream-trust convention; the exploit lives in `weeks/W04/wed-jwt-skip-exploit.md` as instructor-owned cohort takeaway, NOT committed to acquire-gov main); (2) **Item 9 prompt-injection-via-stored-content fix** — Pydantic input validators + output sanitisation on the 4 surfaces; (3) **HITL #6 authority-boundary table** — for each of the 8 ai-orchestrator endpoints, pair names: who can call it, what authority the AI exercises, what gate requires a human, what the rollback looks like. This is the **OWASP LLM06 Excessive Agency** translation into FedRAMP-language. **Dedicated research slot** doubles up — pairs research the Wed scenario-alternatives prompts (W04-SA-1/2/3) in the same block.
 
-**Conceptual (`pre-session/D3.md`)** — OWASP LLM Top 10:2025 deep-dive + HITL authority-boundary framing.
+**Conceptual (`pre-session/3-Wednesday/1-DailyTopicOverview.md`)** — OWASP LLM Top 10:2025 deep-dive + HITL authority-boundary framing.
 
 ## Thu — Modernization Execution Day — OpenRewrite SB 2.7→3.0 + J11→17 *(7 topics)*
 
@@ -55,7 +55,7 @@ phase_2_begins: true
 
 **Afternoon (practical)** — Execute the hop. Each pair owns one service (third pair owns the cross-cutting `javax.*` → `jakarta.*` work in the shared modules). Rescue branch named per stage. `known-failures.md` updated as failures land. EOD: each pair opens a PR **from their per-pair feature branch into `main`** (per D-056 — `acquire-gov` main IS the legacy stack being modernized forward; the `v0.1-legacy-baseline` git tag preserves pre-modernization state for rollback) and tags it for codex adversarial review (Full strictness per D-034). Future-hop ADRs (SB 3.5, SB 4.0) committed to `planning/W04/adrs/`.
 
-**Conceptual (`pre-session/D4.md`)** — OpenRewrite recipe authoring + Spring Boot 3.x migration breaking-change catalog + ADR evidence floor.
+**Conceptual (`pre-session/4-Thursday/1-DailyTopicOverview.md`)** — OpenRewrite recipe authoring + Spring Boot 3.x migration breaking-change catalog + ADR evidence floor.
 
 ## Fri MID-SPRINT SURPRISE — Workflow 4 + Item 3 load incident *(6 topics, incident-driven)*
 
@@ -65,7 +65,7 @@ phase_2_begins: true
 
 **Afternoon (practical — amended plan-spec + Live Defense)** — Pair amends Mon's `planning/W04/` ADRs in-place: which decisions held, which broke, what gets fixed today vs staged for W5 AIOps work (Resilience4j circuit + audit-log race detector are the canonical hand-off). Live Defense at 15:30 — instructor probes the amended plan; rubric in `assessments/W04-live-defense.md`. EOD: post-incident retro (`retros/Fri-post-incident-retro.md`) — what changed in the pair's mental model of "production"?
 
-**Conceptual (`pre-session/D5.md`)** — Pre-reading drop for W5 Mon Plan Day (AIOps anchor week framing — Resilience4j + OpenTelemetry + W3C traceparent).
+**Conceptual (`pre-session/5-Friday/1-DailyTopicOverview.md`)** — Pre-reading drop for W5 Mon Plan Day (AIOps anchor week framing — Resilience4j + OpenTelemetry + W3C traceparent).
 
 ## Special notes for W4 (Cohort #1)
 
@@ -82,7 +82,7 @@ phase_2_begins: true
 
 - `PLAN.md` — this file.
 - `README.md` — week framing + HITL #6 + Mid-Sprint Surprise + D-049 + D-054 + D-060 context.
-- `pre-session/D1.md..D5.md` — pre-session reading (5 days; **D1 = Mon since no holiday compression in W4**).
+- `pre-session/<N-DayName>/1-DailyTopicOverview.md` — pre-session reading (5 days, Mon–Fri; **D1 = Mon since no holiday compression in W4**).
 - `war-room/D1.md..D4.md` — Mon–Thu morning war-rooms.
 - `war-room/Fri-mid-sprint-surprise.md` — instructor-facing Mid-Sprint Surprise script + incident shape + scoring rubric.
 - `scenarios/` — 3 scenario-alternatives prompts (W04-SA-1 circuit-breaker, W04-SA-2 prompt-injection defenses, W04-SA-3 modernization sequencing).

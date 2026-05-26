@@ -23,7 +23,7 @@ cohort1_compression: "Fri 3 Jul = Independence Day observed (Jul 4 falls on Sat)
 
 **Late afternoon (practical)** — Each pair drafts the deliverable taxonomy for their Phase 2 Project: runbook outline, ADR catalog INDEX scaffolding, eval report shape, handoff README skeleton, security-attestation framing, **HITL authority-boundaries doc skeleton (Wed-anchor capstone — synthesises all 7 programme touchpoints per D-043/D-044)**. Modeled as a stack of `Finding` entities opened against the pair-project repo + acquire-gov — mirrors the OIG Findings Tracker (`/admin/findings`) workflow the cohort built in W4/W5 (meta-runbook framing per `feature-inventory-target.md` line 391). Time-boxed: ship taxonomy skeletons by EOD; content lands Tue–Wed.
 
-**Conceptual (`pre-session/D1.md`)** — Pre-reading: stakeholder communication, three-levels rule (90-second / 5-min / 20-min versions), trade-off-naming honesty.
+**Conceptual (`pre-session/1-Monday/1-DailyTopicOverview.md`)** — Pre-reading: stakeholder communication, three-levels rule (90-second / 5-min / 20-min versions), trade-off-naming honesty.
 
 ## Tue — Runbook Authoring + ADR Catalog Curation + Stakeholder Calibration *(7 topics)*
 
@@ -31,7 +31,7 @@ cohort1_compression: "Fri 3 Jul = Independence Day observed (Jul 4 falls on Sat)
 
 **Afternoon (practical)** — **ADR catalog curation.** Each pair walks their W2 ADRs (RAG choices), W3 ADRs (multi-agent + LangGraph HITL), W4 ADRs (modernization hops + AI security), W5 ADRs (AIOps governance) into one consolidated `docs/adrs/INDEX.md` — every programme ADR with a "what we'd revisit now" annotation. Stakeholder interview simulation rotates: instructor plays Agency CIO (10 min/pair), OIG Auditor (10 min/pair), Contracting Officer (10 min/pair) — same artifact, three audiences. Live-demo discipline + "broken-but-named-broken" framing rehearsed.
 
-**Conceptual (`pre-session/D2.md`)** — Pre-reading: eval report shape (RAGAS quantitative + faithfulness trend), FedRAMP Moderate attestation language, OWASP LLM Top 10 (2025 v2.0) attestation patterns, HITL authority-boundaries framing for Wed's capstone synthesis doc.
+**Conceptual (`pre-session/2-Tuesday/1-DailyTopicOverview.md`)** — Pre-reading: eval report shape (RAGAS quantitative + faithfulness trend), FedRAMP Moderate attestation language, OWASP LLM Top 10 (2025 v2.0) attestation patterns, HITL authority-boundaries framing for Wed's capstone synthesis doc.
 
 ## Wed — Eval Report + Security Attestation + HITL Authority Boundaries Synthesis + Dry-Run *(8 topics, at Production band cap)*
 
@@ -50,7 +50,7 @@ cohort1_compression: "Fri 3 Jul = Independence Day observed (Jul 4 falls on Sat)
 
 **Late afternoon (dry-run, was original Thu)** — Each pair runs a 25-min dry-run of their Final Defense (15 demo + 10 Q&A). Instructor plays the Karsun manager + Agency CIO + OIG Auditor + Contracting Officer in rotation per dry-run pass. Other 2 pairs observe; provide 1 critical + 1 supportive note. Pairs revise overnight. **Compressed dry-run** — only one full pass, no time for second iteration. Risk acknowledged in §Density notes below.
 
-**Conceptual (`pre-session/D3.md`)** — Pre-reading: final defense format details, Karsun-manager-tier showcase calibration (D-060), cohort retro framing, Phase 3 commitment framing.
+**Conceptual (`pre-session/3-Wednesday/1-DailyTopicOverview.md`)** — Pre-reading: final defense format details, Karsun-manager-tier showcase calibration (D-060), cohort retro framing, Phase 3 commitment framing.
 
 ## Thu — **Deployment Gate / Final Defense + Client Showcase + Cohort Retro** *(GATE DAY)*
 
@@ -95,7 +95,7 @@ Per pair format (per `deliverables/phase-2-deliverable-spec.md`):
 
 - `PLAN.md` — this file.
 - `README.md` — week-at-a-glance + D-060 Karsun-manager calibration + acquire-gov substrate.
-- `pre-session/D1.md` through `D3.md` — pre-session reading material (no D4 — Thu = gate, no advance reading needed; **no D5** because no Fri).
+- `pre-session/<N-DayName>/1-DailyTopicOverview.md` — pre-session reading material (Cohort #1 Mon–Wed only; **no D4** — Thu = Final Defense gate, no advance reading needed; **no D5** because no Fri / Independence Day observed).
 - `war-room/D1.md` through `D3.md` — morning war-room scenarios. `war-room/D4-defense-showcase-retro.md` = Thu full-day gate agenda (instructor-facing, reproducible from this file alone if Charles is unavailable).
 - `assessments/checkpoint-4/` — Checkpoint 4 audit + Senior exam + Entry exam (canonical: `KarsunFDE/assessment-ec` private repo; working copy here).
 - `assessments/deployment-gate-defense-rubric.md` — pair + per-individual gate rubric, Karsun-manager-tier calibration per D-060.

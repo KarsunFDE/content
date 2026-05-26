@@ -20,7 +20,7 @@ cohort1_compression: "Mon 25 May = Memorial Day (US federal holiday). W1 runs Tu
 
 **Afternoon (practical)** — Each learner picks weakest sub-stack and onboards via Claude Code into the real training repo. `docker-compose up` exploration. CI/CD walked via a real PR through GHA. AWS Bedrock model-access verification. **Brownfield-debt inventory STARTED in `weeks/W01/brownfield-debt.md`.** Onboarding-patterns playbook seeded in `weeks/W01/onboarding-patterns.md`.
 
-**Conceptual (`pre-session/D2.md`)** — FDE programme overview + 12 FDE situations primer. Comparative framing for Wed's instructor-led GalentAI vs Karsun ReDuX comparative session (Galent presenter CUT per D-052; session authored from /web-research on public sources only) + the AWS Public Sector Blog post on Karsun ReDuX + Galent's "Claude Managed Agents vs Enterprise AI Platforms" post (pre-reading for Wed).
+**Conceptual (`pre-session/2-Tuesday/1-DailyTopicOverview.md`)** — FDE programme overview + 12 FDE situations primer. Comparative framing for Wed's instructor-led GalentAI vs Karsun ReDuX comparative session (Galent presenter CUT per D-052; session authored from /web-research on public sources only) + the AWS Public Sector Blog post on Karsun ReDuX + Galent's "Claude Managed Agents vs Enterprise AI Platforms" post (pre-reading for Wed).
 
 **Diagnostic recast (EOD):** *"what did you ask Claude that helped you understand the codebase fastest?"* feeds pair-assignment proposal. **Originally Mon EOD; now Tue EOD due to Memorial Day compression.** Mitigation for the shortened observation window: diagnostic instructions sent to cohort the weekend before so learners can pre-think their answers.
 
@@ -32,7 +32,7 @@ cohort1_compression: "Mon 25 May = Memorial Day (US federal holiday). W1 runs Tu
 
 **Afternoon (practical, dense)** — **Microservices Foundation walkthrough** (compressed from original Tue morning): microservices architecture of the training repo (Angular SPA → Spring Boot service mesh → Python/FastAPI AI microservices), service boundaries + bounded contexts, OAuth2 + JWT auth flow end-to-end, structured logging + correlation IDs (intentionally inconsistent), distributed-systems basics. **Containerization deep-dive — multi-stage Dockerfiles, `:latest`-tag antipattern (brownfield-debt item 11), missing healthchecks (item 7), Postgres volume persistence gap (item 7), Compose networking + service-discovery DNS.** **Brownfield-debt inventory CONTINUED.** Pair-authored Comparative ADR (`templates/scenario-alternatives.md` shape). **Pair Project repo initialization** — each pair scaffolds their continuous Phase-1-through-Phase-2 build (`pair-N-<aspect>` under the KarsunFDE org per the locked aspect from `skills/scenario-design-planning/references/karsun-domain-aspects.yml`).
 
-**Conceptual (`pre-session/D3.md`)** — Week 1 Thu LLM engineering essentials pre-reading.
+**Conceptual (`pre-session/3-Wednesday/1-DailyTopicOverview.md`)** — Week 1 Thu LLM engineering essentials pre-reading.
 
 ## Thu — LLM Engineering Essentials (Production Mindset) *(10 topics)*
 
@@ -40,7 +40,7 @@ cohort1_compression: "Mon 25 May = Memorial Day (US federal holiday). W1 runs Tu
 
 **Afternoon (practical)** — Pair Project + training-project: layer production-quality LLM integration into the Spring Boot endpoint that calls the Python service. LLMs as engineering systems; hallucination failure modes; Bedrock invocation; streaming; retry logic; cost structure.
 
-**Conceptual (`pre-session/D4.md`)** — Structured outputs + production API integration.
+**Conceptual (`pre-session/4-Thursday/1-DailyTopicOverview.md`)** — Structured outputs + production API integration.
 
 ## Fri — LLM Engineering Continued + **Explicit HITL** + First PR Adversarial Review *(12 topics)*
 
@@ -48,7 +48,7 @@ cohort1_compression: "Mon 25 May = Memorial Day (US federal holiday). W1 runs Tu
 
 **Afternoon (practical)** — Structured JSON output (Pydantic); output validation gates (Pydantic + Bean Validation contract tests); context engineering; dynamic context assembly; context compression; prompt evaluations + lifecycle management; **explicit HITL framing inside LLM Engineering Essentials** (1st of 7 programme touchpoints per D-043+D-044); async FastAPI integration; idempotency + retry-strategy depth; **Pair Project Phase 1 Day 1 commit**; **First PR Adversarial Review of Plans** (Codex Light per D-034) on each pair's Day-1 plan-spec; Scenario-alternatives prompt "Bedrock vs OpenAI direct" + Light W1 MCQ.
 
-**Conceptual (`pre-session/D5.md`)** — Pre-reading drop for W2 Mon Plan Day.
+**Conceptual (`pre-session/5-Friday/1-DailyTopicOverview.md`)** — Pre-reading drop for W2 Mon Plan Day.
 
 ## Special notes for W1 (Cohort #1)
 
@@ -63,7 +63,7 @@ cohort1_compression: "Mon 25 May = Memorial Day (US federal holiday). W1 runs Tu
 ## Assets in this folder
 
 - `PLAN.md` — this file.
-- `pre-session/D2.md` through `D5.md` — pre-session reading material (one per day; **no D1.md for Cohort #1** due to Memorial Day).
+- `pre-session/<N-DayName>/1-DailyTopicOverview.md` — pre-session reading material (one per teaching day; **no D1 / Monday folder for Cohort #1** due to Memorial Day — Tue–Fri only).
 - `war-room/D2.md` through `D5.md` — morning war-room scenario (one per day; D3 AM is the instructor-led GalentAI vs Karsun ReDuX comparative session).
 - `scenarios/` — scenario-alternatives prompts released this week.
 - `assessments/` — Light MCQ Fri + first Codex Adversarial Reviews on PRs.

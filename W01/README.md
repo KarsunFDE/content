@@ -21,9 +21,10 @@ When the instructor instantiates a cohort, this folder is the destination for al
 week-W01 content artifacts. Each subfolder corresponds to an artifact type from
 `pipeline/PIPELINE.md` §5.
 
+Daily pre-session reading lives at `pre-session/<N-DayName>/1-DailyTopicOverview.md` — one per teaching day, capped at 12 topics/day per `PIPELINE.md` §4. Authored by `pre-session-author`. See `weeks-overview.md` for which days each week has.
+
 | Subfolder | Artifact type | Skill that authors it |
 |-----------|---------------|------------------------|
-| `pre-session/D1..D5.md` | Pre-session reading (one per day, capped at 12 topics/day per `PIPELINE.md` §4) | `pre-session-author` |
 | `war-room/D1..D5.md` | Morning war-room scenario | `war-room-scenario` |
 | `scenarios/W##-SA-#.md` | Alternative-tech scenario (3–5 per week) | `scenario-alternatives` |
 | `assessments/` | MCQ (senior + entry), Live Defense, Scenario Design Planning | `mcq-generator`, `live-defense-rubric`, `scenario-design-planning` |
