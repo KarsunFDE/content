@@ -224,14 +224,14 @@ The 12 deliberate brownfield-debt items are seeded into `acquire-gov` on purpose
 
 **Schema-reading exercise (afternoon practical).** Open the Postgres schema (`infra/postgres/init.sql` or the equivalent Spring JPA entities) + the Mongo Atlas Vector Search configuration (W2 stub). Five minutes of reading the schema tells you what the system thinks the world looks like — which tables have audit columns, which foreign keys are missing, which fields are nullable when they shouldn't be. Schema-reading is **how an FDE comprehends data semantics fast** at a client.
 
-**Each learner names their weakest sub-stack** during the morning's stack tour (Angular / Spring Boot 3.x / Python+FastAPI / Bedrock+LangChain / Postgres+Atlas / Compose+GHA-OIDC). That naming feeds the pair-assignment diagnostic.
+**Each learner names their weakest sub-stack** during the morning's stack tour (Angular 17 / Spring Boot 2.7 / Python+FastAPI / Bedrock+LangChain / Postgres+Atlas / Compose+GHA-OIDC). That naming feeds the pair-assignment diagnostic.
 
 **Morning preview:** the instructor adds items to `brownfield-debt.md` live as the cohort surfaces them. You'll watch the doc grow. By EOD you should have 5+ items captured + the three Angular gaps named.
 
 **Read / watch:**
 - `training-project/README.md` in `acquire-gov` — the canonical 12-item list (don't read in advance if you want to discover them live; skim if you want the map first).
 - [Spring Boot 3.x research brief](../../../research/spring-boot-3-x-20260525.md) — context on items 2 + 4 (the 2.7.18 → 3.5+ jump + the `javax` → `jakarta` namespace migration).
-- [Angular 17→21 research brief](../../../research/angular-17-plus-20260525.md) — context on the modernization target (standalone components, signals, `@if`/`@for` control flow).
+- [Angular 17+ research brief](../../../research/angular-17-plus-20260525.md) — context on the Angular 17 baseline + post-17 evolution (standalone components, signals, `@if`/`@for` control flow).
 - [AWS SDK v1 → v2 migration research brief](../../../research/aws-sdk-v1-to-v2-migration-20260525.md) — context on item 4.
 
 ## 7. Prep for Wed — Karsun x GalentAI public-source reading list (12 min)
