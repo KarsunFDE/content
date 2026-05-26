@@ -296,7 +296,7 @@ If you have time between session blocks and don't yet have an environment ready,
 - Karsun ReDuX context — AWS Public Sector Blog post (cited in topic 7), retrieved 2026-05-22 via /web-research.
 - GalentAI positioning + engine catalog — galent.com homepage + Insights blog (cited in topic 7), retrieved 2026-05-22 via /web-research.
 - Spring Boot 3.x current state — [`research/spring-boot-3-x-20260525.md`](../../../research/spring-boot-3-x-20260525.md), retrieved 2026-05-25 via /web-research.
-- Angular 17→21 current state — [`research/angular-17-plus-20260525.md`](../../../research/angular-17-plus-20260525.md), retrieved 2026-05-25 via /web-research.
+- Angular 17 baseline + post-17 ecosystem state — [`research/angular-17-plus-20260525.md`](../../../research/angular-17-plus-20260525.md), retrieved 2026-05-25 via /web-research.
 - AWS Bedrock Claude model catalog — [`research/bedrock-claude-catalog-20260522.md`](../../../research/bedrock-claude-catalog-20260522.md), retrieved 2026-05-22 via /web-research (WebSearch+WebFetch fallback).
 - AWS SDK v1 → v2 migration — [`research/aws-sdk-v1-to-v2-migration-20260525.md`](../../../research/aws-sdk-v1-to-v2-migration-20260525.md), retrieved 2026-05-25 via /web-research.
 - GalentAI vs Karsun ReDuX comparative deep-dive — [`KarsunFDE/content/research/galentai-vs-karsun-redux-comparative-20260522.md`](../../../../KarsunFDE/content/research/galentai-vs-karsun-redux-comparative-20260522.md), retrieved 2026-05-22 via /web-research.
