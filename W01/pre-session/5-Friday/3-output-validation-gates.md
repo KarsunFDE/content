@@ -1,9 +1,9 @@
 ---
 week: W01
-day: Thu
+day: Fri
 topic_slug: output-validation-gates
 topic_title: "Output validation gates — Pydantic + Bean Validation contract"
-parent_overview: W01/pre-session/4-Thursday/1-DailyTopicOverview.md
+parent_overview: W01/pre-session/5-Friday/1-DailyTopicOverview.md
 estimated_minutes: 10
 sources:
   - url: https://docs.spring.io/spring-framework/reference/core/validation/beanvalidation.html

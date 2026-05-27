@@ -1,16 +1,16 @@
 ---
 week: W01
 day: Wed
-title: "Pre-session — Comparative-session primer + Microservices Foundation + Pair-Project init + Thu LLM primer"
+title: "Pre-session — Comparative-session primer + Microservices Foundation + Pair-Project init"
 audience: All cohort members
-time_on_task_minutes: 60
+time_on_task_minutes: 50
 last_verified: 2026-05-26
 cohort1_compression: "AM is instructor-led GalentAI vs Karsun ReDuX comparative (Galent presenter CUT per D-052; session authored from /web-research on public sources only). PM absorbs canonical Tuesday Microservices Foundation walkthrough."
 ---
 
 # W1 Wed Pre-Session — Comparative AM + Microservices PM + Pair-Project init
 
-> Read **Tuesday evening / before Wednesday 08:30**. ~60 min. Wednesday is a 3-block AM (comparative session) + dense PM (Microservices Foundation + Pair-Project repo init). The cohort lead deliberately did not bring in a Galent presenter, so the AM is **/web-research-driven on the Karsun side too**: an instructor-led tour through public sources only. Your job before Wed is to read the underlying research artifact (linked below) and bring an opinion. Topic 6 at the end is a compact pointer to the Thu LLM Engineering Essentials material — read it Wed evening, not Tuesday.
+> Read **Tuesday evening / before Wednesday 08:30**. ~50 min. Wednesday is a 3-block AM (comparative session) + dense PM (Microservices Foundation + Pair-Project repo init). The cohort lead deliberately did not bring in a Galent presenter, so the AM is **/web-research-driven on the Karsun side too**: an instructor-led tour through public sources only. Your job before Wed is to read the underlying research artifact (linked below) and bring an opinion. (Thursday's pre-session — read Wed evening — installs the LLM Engineering Essentials substrate; lives in `pre-session/4-Thursday/`.)
 
 ## 1. Wed at a glance — comparative AM + Microservices PM + Pair-Project init (5 min)
 
@@ -142,35 +142,6 @@ The Wed PM Microservices Foundation walkthrough surfaces several new items live 
 **Important:** do not fix the debt items. They are the W4 modernization-week material. Inventorying them now is the cohort exercise; fixing them is the W4 cohort exercise.
 
 Reflection (1 sentence): *"Of the debt items surfaced so far, which one would you tackle first if a federal client gave you 2 weeks of solo time on `acquire-gov`?"*
-
-## 6. Pre-reading for Thu — LLM Engineering Essentials (read Wed evening, ~10 min)
-
-Thursday morning is the first real war-room (Incident mode) — a contracting-officer email asks the team to draft a solicitation. The training-project's `ai-orchestrator` will be the surface where production-quality LLM integration starts. Read the below Wed evening, after the Wed sessions end. The full depth lands in Thursday's pre-session (`pre-session/4-Thursday/1-DailyTopicOverview.md`) — what follows is the orientation you need to walk into Thursday morning.
-
-**LLMs as engineering systems, not magic.** By Thursday the cohort treats Bedrock invocations as production calls — same discipline as any other API integration: structured I/O, validation, retry, observability, cost tracking, security. Input is a *structured prompt* (persona + constraints + grounding + output format are engineering decisions). Output is a *typed contract* (Pydantic on Python side, Bean Validation on Spring side, contract tests across both). Failure modes are real: hallucination, stale knowledge, truncation, JSON corruption, rate limits, cost overruns. HITL is a *production pattern* — first explicit framing lands Friday (1st of 7 programme HITL touchpoints per D-043).
-
-**Hallucination failure modes** you'll see Thursday: *Confabulation* (model invents a citation/statute/precedent), *Stale knowledge* (training data older than the FAR/DFARS amendment), *Over-confidence in plausible outputs* (sounds right; contradicts source corpus), *Format drift* (prose instead of JSON), *Truncation* (hits context window mid-sentence). Mitigations live in structured-output validation (Pydantic strict mode), grounding via RAG (W2), HITL gates (W3/W4), eval harness (W2 Fri).
-
-**Model selection for federal contexts.** Programme anchor is AWS Bedrock with Claude. The defence-of-choice (first time you'll be asked is Friday's "Bedrock vs OpenAI direct" scenario-alternatives prompt): FedRAMP High in GovCloud regions (Bedrock has it; OpenAI direct does not as of Q1 2026), data residency in-region, GovCloud availability, Bedrock cross-region inference (CRIS) for throughput within the FedRAMP boundary. Read `training-project/docs/adrs/0002-bedrock-as-llm-anchor.md` for the full rationale.
-
-**Bedrock invocation — what Thursday's PR adds.** The starting state of `services/ai-orchestrator/app/main.py` has a `POST /draft-solicitation` endpoint with **deliberate gaps**: no system prompt, no streaming, no retry, no cost tracking, no structured-output schema. Thursday's PR adds: system-prompt architecture (persona = contracting officer drafting assistant; constraints = FAR/DFARS-compliant language; output format = JSON with named fields; grounding is naive system-prompt only — RAG arrives W2), streaming (SSE so the Angular UI does not hang for 30s), retry-with-jitter on 429s/5xxs + circuit-break on persistent failure, cost tracking (log per-request input/output tokens; tag by feature for per-tenant budget tracking in W5 AIOps).
-
-**Wed evening install / verify checklist** (so you're ready for Thursday morning):
-
-- `aws bedrock list-foundation-models --region us-east-1` returns Claude model IDs without errors.
-- `python -c "import boto3; print(boto3.client('bedrock-runtime', region_name='us-east-1'))"` returns a client without errors.
-- `http://localhost:8000/health` returns the (lying) `ok` response after `docker-compose up`.
-- If any of these fail, flag at Thursday's 09:00 standup before the practical block starts.
-
-**Codex Adversarial Review (Light) starts Thursday on real PRs.** Per D-034, calibration is at **Light strictness** for W1 — Codex will flag findings; most are framed as coaching, not blocking. P0 findings still block; P1 architectural-drift items appear as conversation starters rather than gates. Codex will appear in your PR threads. Don't be alarmed. Read the findings; treat them as a second pair of eyes.
-
-Key terms: *production LLM call · Pydantic strict mode · Bean Validation · hallucination categories (confabulation / stale / over-confidence / format drift / truncation) · FedRAMP High / GovCloud · CRIS (cross-region inference) · streaming (SSE) · retry-with-jitter · circuit break · cost tracking per-tenant · Codex Adversarial Review Light.*
-
-Reflection (1 sentence): *"Of the five hallucination categories, which would be hardest to catch in a federal solicitation drafting flow, and what mitigation layer would you reach for first?"*
-
-## What you'll do W1 Thu
-
-Morning war-room (`war-room/D4.md`) — first Incident-mode scenario in `acquire-gov`'s solicitation flow. Afternoon practical — Pair Project + training-project both land production-quality LLM integration into the Spring Boot endpoint that calls `ai-orchestrator`. Conceptual (`pre-session/4-Thursday/1-DailyTopicOverview.md`) — structured outputs + production API integration primer for Friday.
 
 ## Sources
 

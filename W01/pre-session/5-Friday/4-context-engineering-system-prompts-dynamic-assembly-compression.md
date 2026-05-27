@@ -1,9 +1,9 @@
 ---
 week: W01
-day: Thu
+day: Fri
 topic_slug: context-engineering-system-prompts-dynamic-assembly-compression
 topic_title: "Context engineering — system prompts, dynamic assembly, compression"
-parent_overview: W01/pre-session/4-Thursday/1-DailyTopicOverview.md
+parent_overview: W01/pre-session/5-Friday/1-DailyTopicOverview.md
 estimated_minutes: 15
 sources:
   - url: https://www.deepset.ai/blog/context-engineering-the-next-frontier-beyond-prompt-engineering

@@ -1,9 +1,9 @@
 ---
 week: W01
-day: Thu
+day: Fri
 topic_slug: structured-json-output-pydantic
 topic_title: "Structured JSON output — Pydantic and beyond"
-parent_overview: W01/pre-session/4-Thursday/1-DailyTopicOverview.md
+parent_overview: W01/pre-session/5-Friday/1-DailyTopicOverview.md
 estimated_minutes: 12
 sources:
   - url: https://pydantic.dev/articles/llm-intro

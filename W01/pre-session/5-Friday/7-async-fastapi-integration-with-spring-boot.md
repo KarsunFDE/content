@@ -1,9 +1,9 @@
 ---
 week: W01
-day: Thu
+day: Fri
 topic_slug: async-fastapi-integration-with-spring-boot
 topic_title: "Async FastAPI integration with Spring Boot"
-parent_overview: W01/pre-session/4-Thursday/1-DailyTopicOverview.md
+parent_overview: W01/pre-session/5-Friday/1-DailyTopicOverview.md
 estimated_minutes: 8
 sources:
   - url: https://fastapi.tiangolo.com/advanced/events/

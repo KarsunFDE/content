@@ -1,9 +1,9 @@
 ---
 week: W01
-day: Thu
+day: Fri
 topic_slug: prompt-evaluations-lifecycle-management
 topic_title: "Prompt evaluations + lifecycle management"
-parent_overview: W01/pre-session/4-Thursday/1-DailyTopicOverview.md
+parent_overview: W01/pre-session/5-Friday/1-DailyTopicOverview.md
 estimated_minutes: 8
 sources:
   - url: https://logiciel.io/blog/llm-eval-harness-internal-build-2026

@@ -1,9 +1,9 @@
 ---
 week: W01
-day: Thu
+day: Fri
 topic_slug: explicit-hitl-framing
 topic_title: "Explicit HITL framing — Friday's named topic"
-parent_overview: W01/pre-session/4-Thursday/1-DailyTopicOverview.md
+parent_overview: W01/pre-session/5-Friday/1-DailyTopicOverview.md
 estimated_minutes: 8
 sources:
   - url: https://www.nist.gov/itl/ai-risk-management-framework

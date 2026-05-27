@@ -1,130 +1,150 @@
 ---
 week: W01
 day: Fri
-title: "Pre-session — RAG Architecture preview + W2 Mon Plan Day prep"
+title: "Pre-session — Structured outputs + production API integration"
 audience: All cohort members
-time_on_task_minutes: 57
+time_on_task_minutes: 66
 last_verified: 2026-05-26
-fde_situations: [1, 6, 7, 10, 12]
-tech: [rag, langchain-v1, mongodb-atlas-vector-search, bedrock, codex-adversarial-review]
 ---
 
-# W1 Fri Pre-Session — RAG Architecture preview + W2 Mon Plan Day prep
+# W1 Fri Pre-Session — Structured outputs + production API integration
 
-> Read after Fri's first PR Adversarial Review + HITL commit, before W2 Mon's Plan Day. ~57 min. W2 Mon is the first formal Plan Day (per D-029) — the pair authors a `scenario-design-planning.md` artifact before any code lands. **Hard rule:** do not push code to your pair-project over the weekend. Bring questions, not commits.
+> Read after Thu's first LLM PRs land and before Fri morning. ~66 min across 7 topics. Fri is dense (explicit HITL framing — 1st of 7 programme touchpoints — and the First PR Adversarial Review). This pre-session prepares the foundation.
 
-## 1. Why RAG, not fine-tuning, for federal acquisitions (10 min)
+## 1. Structured JSON output — Pydantic and beyond (12 min)
 
-The FAR/DFARS corpus changes regularly (amendments, agency-specific supplements, OIG advisories). Fine-tuning a model means re-training every time a clause changes — impractical and expensive. RAG lets the model cite the *current* corpus at inference time.
-
-**Callback — today's war-room.** This morning's Act 4 closed with the "48 CFR 47.305-2" hallucination: yesterday's solicitation draft cited a paragraph that does not exist in actual FAR, and the CO caught it. Friday's answer was HITL (manage the failure). Monday's answer is RAG (eliminate the failure mode at its source). The W2 Mon Plan Day frames RAG as the answer to *that specific incident*, not as an abstract topic — bring the hallucination case to Monday's whiteboard.
-
-The RAG decision space (each becomes an ADR commit in Monday's plan-spec):
-- **Embedding model** — which one captures regulatory language well?
-- **Chunking strategy** — clauses, sub-clauses, sentences, paragraphs?
-- **Vector store** — Atlas Vector Search (our default), Pinecone, pgvector?
-- **Retrieval mode** — dense, sparse (BM25), hybrid?
-- **Re-ranking** — on or off? Which model?
-- **Citation grounding** — how does the model trace claims to chunks?
-
-## 2. The training-project's Atlas baseline — vector store collocation (8 min)
-
-MongoDB Atlas is **already in the training repo** (you saw it Tue) as a document store for solicitations + evaluations + FAR-clause metadata. W2 *extends* the same Atlas deployment to serve as our vector store via the `$vectorSearch` aggregation stage + an Atlas Vector Search index.
-
-**One database, two access patterns.** This is deliberate — collocation reduces the data-residency surface for the federal context (per D-031). Embeddings live next to tenant data, so multi-tenant pre-filtering happens *inside* the same vector-search query (the `filter` clause on `$vectorSearch`), not as a post-filter that leaks rows then drops them.
-
-**The operational gotcha to know walking in:** `$vectorSearch` MUST be the **first stage** of any aggregation pipeline where it appears. Cannot be used inside `$lookup` sub-pipelines or `$facet` stages. Sources retrieved via /web-research 2026-05-22 (see Sources §). Pinecone + pgvector come up as alternatives in W2 Tue's scenario-alternatives prompt; defending the Atlas default is part of the Monday planning rationale.
-
-## 3. LangChain v1.0 posture — critical (12 min)
-
-W2 Mon's plan-spec **must include an ADR commitment** that the pair uses LangChain v1.0 — and what that means. v1.0 GA shipped 2025-10-22 with a deliberate architectural pivot to *agent-first*: `create_agent` is the canonical entry point on top of the LangGraph runtime, with a middleware system for HITL, summarization, and PII. Latest stable as of /web-research 2026-05-22: v1.3.0 (released 2026-05-12).
-
-What that pivot means concretely — and what the cohort must **not** write:
-
-- **The `Chain` class is removed** and moved to the separate `langchain-classic` package for backwards compatibility only. v0.x code that uses `chain.run()` does not work in v1.0.
-- **LCEL `|` pipe syntax is no longer the central composition mechanism.** v0.x composition `prompt | model | parser` is deprecated as the *foundation*; it still works in some places but is no longer the framework's spine.
-- **Runnable-as-foundation framing is deprecated.** v1.0 docs centre on `create_agent`, not Runnables.
-- **Sequential composition in v1.0 is plain Python function calls** — assign to variables, no framework magic.
+A production LLM doesn't return strings — it returns *typed values*. Friday's PRs replace the W1 Thu Bedrock raw response with Pydantic-validated structured output.
 
 The pattern:
-```python
-# v1.0 (current — correct)
-chunks = retriever.invoke(query)
-compressed = compressor.invoke(chunks)
-reranked = reranker.invoke(compressed)
-context = format_for_prompt(reranked)
-response = model.invoke(build_prompt(query, context))
 
-# v0.x (deprecated — DO NOT WRITE)
-# from langchain.chains import RetrievalQA
-# qa = RetrievalQA.from_chain_type(...)
-# qa.run(query)
+```python
+from pydantic import BaseModel, Field
+
+class SolicitationDraft(BaseModel):
+    title: str = Field(..., min_length=10, max_length=200)
+    description: str = Field(..., min_length=50, max_length=5000)
+    far_clauses_referenced: list[str] = Field(default_factory=list)
+    estimated_value_usd: float | None = None
+    cost_tracking: dict[str, int] = Field(..., description="input_tokens, output_tokens")
+
+    class Config:
+        extra = "forbid"   # strict mode: fail on unexpected fields
 ```
 
-When the cohort uses Claude or Google to find LangChain examples, **treat anything older than 2025-Q3 as suspect.** Most third-party tutorials still teach LCEL `|` pipe and `Chain`-class patterns; the v1.0 official docs do not. Verify against the v1.0 docs (linked in Sources). The training-project's `requirements.txt` is pinned to `langchain==0.1.x` *deliberately* — that's item 5 in the brownfield-debt inventory. The cohort migrates it Monday + Tuesday of W2.
+When you invoke Bedrock with Claude, ask for JSON in the system prompt + parse with Pydantic. If Pydantic raises, **don't return the raw output** — return a structured error, log the failure for the eval harness (W2 Fri), and either retry with a corrected prompt or escalate to HITL.
 
-> [!instructor-review]
-> The pinned `langchain==0.1.x` deliberate-debt item triggers known-bad-pattern ids `langchain-chain-class`, `langchain-chaining-verb`, `langchain-lcel-pipe`, `langchain-pre-v1-advocacy` (per `skills/tech-research/references/known-bad-patterns.yml`). Confirm with cohort lead before W2 Mon that the migration target is `langchain v1.3.0` (current stable), not just "latest v1.x" — pinning to a known-good version reduces surprise during the W2 Mon ADR.
+**Anti-pattern to avoid:** `try/except` around the parse with a bare-string fallback. This hides failures and makes regression invisible. Fail loud; the eval harness catches the trend.
 
-## 4. W2 Mon Plan Day shape + 6 required artifacts (12 min)
+## 2. Output validation gates — Pydantic + Bean Validation contract (10 min)
 
-W2 Mon is the **first formal Plan Day** in the programme. Plan Days follow a specific shape (per D-029):
+Friday's PR adds output validation at two layers:
 
-- **Morning war-room** — federal-acquisitions RAG problem framed (FAR/DFARS as corpus, contracting-officer drafting as use case, OIG reproducibility as hard NFR). The "48 CFR 47.305-2" hallucination from today is the live exhibit.
-- **Practical block** — pair-led understanding + planning with Claude Code as comprehension accelerant. Pair authors a **Scenario Design Planning artifact** (graded; replaces the lighter `week-plan-spec.md` template for graded weeks).
-- **Conceptual block** — briefs Tuesday's first implementation steps.
-- **§0 Plan retrospective** — required from W3 Mon onward (per D-036). W2 Mon has nothing to retro yet (Fri W1 was Day 1, not a plan-spec). Surface this explicitly so the pair doesn't waste 30 min looking for the retro target.
+- **Python side (`ai-orchestrator`):** Pydantic strict-mode validates the Bedrock response *before* it leaves the AI service.
+- **Spring side (`solicitation-service`):** Bean Validation re-validates the response *as it arrives from the AI service*. Defence in depth — if the AI service is wrong about its contract, Spring catches it.
 
-The Scenario Design Planning artifact has **six required artifacts** (see `templates/scenario-design-planning.md`):
+The two validations must agree on the schema. Codex Adversarial Review (Light strictness Fri per D-034) will flag drift between the two definitions.
 
-1. Requirements synthesis (1–2 pages)
-2. 6R / system map + diagram (1 page)
-3. Two-to-three ADRs (1 page each — **must include chunking strategy, embedding model, vector store choice + LangChain v1.0 posture**)
-4. Estimate (effort + cost)
-5. Risk register (the hallucination case from Friday belongs here)
-6. Open questions
+## 3. Context engineering — system prompts, dynamic assembly, compression (15 min)
 
-The pair has one working day — Monday — to produce all six artifacts. **No code lands Monday.**
+The prompt is an *architectural artifact*, not a string literal. Treat it as code: version-controlled, tested, ADR-worthy. This topic has three beats — the prompt's static shape, its run-time assembly, and how you keep it inside the context window.
 
-## 5. RAG framing — six dimensions to plan against (10 min)
+### 3a. System prompt as architecture
 
-When the pair sits down Monday to author the plan-spec, these are the dimensions to argue through. The table below is the ADR scaffold — copy it into Monday's plan-spec as the first decision-matrix:
+Named sections, not free-form prose:
 
-| Dimension | W2 Mon ADR question |
-|-----------|---------------------|
-| **Corpus shape** | What are we indexing? Full clauses, sub-clauses, sentences? Where does the cohort draw the chunk boundary? |
-| **Embedding model** | Bedrock Titan, Cohere Embed v3 via Bedrock, Sentence Transformers self-hosted? |
-| **Vector store** | Atlas Vector Search (default), Pinecone (alternative), pgvector (alternative)? |
-| **Retrieval mode** | Dense, sparse, hybrid (Reciprocal Rank Fusion)? |
-| **Citation grounding** | How does the pair trace every claim to a chunk? UI surface? Audit log? |
-| **Evaluation pattern** | RAGAS metrics, held-out QA pairs, eval-as-test-fixture in CI? Where do reports live? |
+```
+<persona>You are a federal contracting officer's drafting assistant.</persona>
+<constraints>
+- Output FAR/DFARS-compliant language only.
+- Cite only sources explicitly grounded in the retrieved chunks below.
+- If you can't ground a claim, say so explicitly; never invent a citation.
+</constraints>
+<output_format>
+Return JSON matching this schema: {...}.
+</output_format>
+<grounding>
+Retrieved chunks: {...}    ← empty W1; populated from RAG in W2
+</grounding>
+```
 
-Each row is an ADR-shaped argument: state the default, name the alternatives, defend the choice against the federal-acquisitions context (data residency, audit, hallucination tolerance). Monday's instructor integrity-check at 17:00 reads each ADR for "would this defend itself in front of a CO?"
+Each section has an owner, a change history, and an eval set. Drift between section ownership is where prompts rot.
 
-## 6. Codex Adversarial Review — Ramping tier in W2 (5 min)
+### 3b. Dynamic context assembly
 
-Per D-034 calibration ramp, W2 is the **Ramping** tier:
+The W2 RAG layer will inject retrieved chunks into the `<grounding>` section at request time. Friday's PR prepares for this by:
 
-- W1 was **Light** (P0 floor only; P1 findings as coaching).
-- W2 ramps **P1 findings back to blocking**.
-- W3 is **Near-full**.
-- W4 is **Full**.
+- Separating the **static system prompt** (persona + constraints + format) from the **dynamic context** (currently empty placeholder; populated by RAG W2).
+- Logging the *resolved* prompt at debug level so the cohort can replay it.
 
-You'll see findings get more pointed in W2 than W1. The ramp is deliberate — by W4, Codex is acting as a second reviewer at production strictness. Defending or addressing findings is part of W2's plan-spec PR cycle, not a side-task. Block out time Tuesday for a first Codex-review-fix loop on Monday's plan-spec PR.
+The split matters because static vs dynamic sections have different test strategies — static gets snapshot tests, dynamic gets retrieval-quality evals.
 
-## What you'll do W2 Mon
+### 3c. Context compression patterns
 
-Plan Day — no code. Six planning artifacts authored. ADRs committed for chunking + embedding + vector store + LangChain v1.0 posture. Plan-spec integrity check by instructor at 17:00. Bring the "48 CFR 47.305-2" hallucination case + your Friday HITL decision rationale + your top-3 RAG questions.
+When grounding context is large (full FAR clauses), the model hits its context window. Patterns Fri previews (deep work W2):
 
-Tuesday opens with implementing the plan, not with a blank page.
+- **Summary buffer** — summarise the conversation history; keep last N turns verbatim.
+- **Sliding window** — drop oldest turns when context window approaches limit.
+- **Hierarchical compression** — summarise summaries.
 
-## Sources
+W1 Fri doesn't implement these; it leaves room for them. The cohort returns here W2 Tue when RAG retrieval starts producing chunk sets that exceed a single-pass window.
 
-- LangChain v1 overview — `https://docs.langchain.com/oss/python/releases/langchain-v1`, retrieved 2026-05-22 via /web-research. Canonical v1.0 framing (`create_agent`, middleware, namespace cleanup).
-- LangChain 1.0 GA announcement — `https://changelog.langchain.com/announcements/langchain-1-0-now-generally-available`, retrieved 2026-05-22 via /web-research. Authoritative GA date (2025-10-22) and `Chain`-class removal.
-- LangChain changelog (v1.3.0, langgraph v1.2.0) — `https://changelog.langchain.com/`, retrieved 2026-05-22 via /web-research.
-- MongoDB Atlas `$vectorSearch` operator reference — retrieved 2026-05-22 via /web-research. First-stage-only rule, `filter` clause for multi-tenant pre-filter.
-- Local research briefs (cached, generated via /web-research): `research/langchain-v1-20260522.md`, `research/mongodb-atlas-vector-search-20260522.md`.
-- Known-bad-pattern reference: `skills/tech-research/references/known-bad-patterns.yml` (entries `langchain-chain-class`, `langchain-chaining-verb`, `langchain-lcel-pipe`, `langchain-pre-v1-advocacy`, `vector-cosine-default`).
+## 4. Prompt evaluations + lifecycle management (8 min)
+
+Prompts change over time. The cohort needs a discipline for managing prompt versions:
+
+- **Prompt registry** — every prompt lives at a versioned path (`prompts/draft-solicitation/v2.md`).
+- **Eval harness** — every prompt change runs against a held-out QA set (W2 Fri builds this).
+- **A/B comparison** — when changing a prompt, run new + old against the same eval set; compare faithfulness, latency, cost.
+
+Production tracing arrives W5 (LangSmith deep-dive per D-031). Until then, the eval harness lives in flat files in the repo.
+
+## 5. Explicit HITL framing — Friday's named topic (8 min)
+
+Friday surfaces Human-in-the-Loop (HITL) as an explicit programme thread for the first time (1st of 7 touchpoints per D-043+D-044).
+
+The question: **when does an LLM output need a human gate before action?**
+
+The federal-acquisitions answer:
+- **Reversibility** — if the action is undoable (search, lookup, draft a paragraph), no gate needed.
+- **Blast radius** — if the action affects external parties (award a contract, send a letter, publish a notice), gate it.
+- **Audit demands** — if the federal context demands a human-decision audit row, gate it.
+
+Friday's exercise: each pair commits **one HITL decision in their Phase 1 plan-spec by EOD**. Which solicitation-drafter output requires human approval before it leaves the platform? Why?
+
+This sets up:
+- W2 Thu's HITL-as-RAG-fallback pattern.
+- W3 Mon Plan Day's HITL interrupt-node ADR.
+- W3 Wed's HITL between multi-agent handoffs.
+- W3 Thu's full LangGraph HITL deep-dive (technical anchor).
+- W4 Wed's HITL re-asserted under OWASP LLM06 (Excessive Agency).
+- W5 Wed's HITL authority boundaries for AI-SRE auto-remediation.
+
+## 6. Async FastAPI integration with Spring Boot (8 min)
+
+The `ai-orchestrator` currently has a synchronous endpoint. Streaming + retries push it toward async patterns:
+
+- `async def` endpoints with `httpx` for outbound calls.
+- Background tasks via `BackgroundTasks` for fire-and-forget audit log writes.
+- Lifecycle management — `lifespan` context manager for Bedrock client + Mongo client init/cleanup.
+
+Spring side integrates via `WebClient` calling the async FastAPI endpoint; the `solicitation-service` blocks on the response (deliberate W1 simplification — async-all-the-way arrives W3).
+
+## 7. First PR Adversarial Review (Light) — what to expect Fri (5 min)
+
+Friday afternoon: each pair's Day-1 plan-spec PR gets the first Codex Adversarial Review of the cohort.
+
+At Light strictness:
+- Codex flags missing ADR rationale, unclear success criteria, undefined HITL boundary.
+- Findings appear as PR comments, not blocking gates.
+- Pair responds with either a fix or an explicit deferral with reasoning.
+- W2 Mon Plan Day opens with reviewing Friday's findings as part of the §0 retro pattern (which formally starts W3 Mon).
+
+Don't be defensive. Treat the findings as a second-FDE pair-of-eyes. The calibration ramp (W1 Light → W4 Full per D-034) means findings will get more pointed; W1 is the warm-up.
+
+## What you'll do W1 Fri
+
+- Morning war-room: cost + reliability for LLM endpoints.
+- Afternoon: structured output + validation + context engineering + HITL + First PR Adversarial Review + Pair Project Phase 1 Day-1 commit.
+- EOD: Phase 1 plan-spec with HITL decision committed; Light MCQ submitted; first Live Defense **deferred** to Fri W2 (no scenarios with ADRs yet on Fri W1).
 
 Last verified: 2026-05-26
