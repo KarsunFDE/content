@@ -17,9 +17,9 @@ Learner-facing prep briefs for the **four checkpoint assessments** in the Karsun
 | 1 | [Checkpoint 1](checkpoint-1.md) | Tue 9 Jun 2026 | W1 LLM Engineering Essentials + W2 RAG Architecture |
 | 2 | [Checkpoint 2](checkpoint-2.md) | Tue 16 Jun 2026 | W3 Agentic Systems |
 | 3 | [Checkpoint 3](checkpoint-3.md) | Mon 22 Jun 2026 | W4 AI-Native SDLC + AI Security + Brownfield Modernization |
-| 4 | [Checkpoint 4](checkpoint-4.md) | Mon 29 Jun 2026 | W5 AIOps + Governance + Deployment Readiness |
+| 4 | [Checkpoint 4](checkpoint-4.md) | Fri 26 Jun 2026 | W5 AIOps + Governance + Deployment Readiness |
 
-C1 + C2 land on **Tuesday** in the standard checkpoint slot. C3 + C4 land on **Monday** because they collide with W5 + W6 Plan Days — exam time shifts to early afternoon on those weeks. See each brief for specifics.
+C1 + C2 land on **Tuesday** in the standard checkpoint slot. C3 lands **Monday** (collides with W5 Plan Day); C4 lands the **Friday of W5** (the same day as the Final Adversarial Review PR). Both shift exam time to early afternoon. See each brief for specifics.
 
 ## Two assessment surfaces
 
@@ -69,23 +69,11 @@ You'll get a per-checkpoint composite verdict: **meets / partial / below**. Per-
 - The actual audit questions
 - Answer keys
 
-Example scenarios in each brief are **deliberately distinct** from the curriculum's war-room incidents AND from any QC-team-provided prep material. Use them to test your opening, not as a study bank.
-
-## QC-team prep material (Checkpoint 1 only, so far)
-
-Your instructor will share two reference documents the QC team has provided for **Checkpoint 1**:
-
-- `FDE_week1_LLM_Essentials` — higher-density scenario bank for W1 LLM Engineering Essentials
-- `FDE_week2_RAG_Architecture` — same shape for W2 RAG Architecture
-
-Work through them as **practice**, not as a leak. The actual checkpoint questions are authored from the same content surface but worded differently. Memorising those packets verbatim is the wrong move.
-
-QC-team material for Checkpoints 2-4 may arrive later — this folder will be updated when it does.
+Example scenarios in each brief are **deliberately distinct** from the curriculum's war-room incidents. Use them to test your opening, not as a study bank.
 
 ## Refresh cadence
 
 These briefs update when:
-- The QC team provides additional reference material for any checkpoint
 - The checkpoint date moves (calendar adjustments)
 - Hot-tech references go stale (auditor presses on technology that's evolved past what's in the brief)
 

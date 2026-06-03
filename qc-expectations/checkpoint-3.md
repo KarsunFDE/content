@@ -12,14 +12,6 @@ audience: learner
 
 > Learner-facing prep brief. Covers **W4 AI-Native SDLC + AI Security + Brownfield Modernization**. Lands the Monday of W5 — collides with W5 Plan Day. **The exam runs early afternoon, not in the standard Tue slot.** Audit interviews run async across W5.
 
-## At a glance
-
-| Surface | Format | Duration | When |
-|---|---|---|---|
-| **Plan Day (morning)** | Standard W5 Plan Day work — low-disruption, instructor-led | ~3 hr | Mon 22 Jun AM |
-| **Exam (in-person, early PM)** | Scenario-grounded MCQ + (Senior) short scenario. **Modernization tech presses heavier than prior checkpoints.** | 60–90 min | Mon 22 Jun, early afternoon |
-| **Audit interview (1:1)** | Zoom, 30 min. **AI-Thinking floor drops to 3** for this checkpoint — SDLC + Reliability lenses get heavier rotation. | 30 min/candidate | Async slot you book that week |
-
 The exam-time shift (early PM instead of standard Tue) is a Cohort #1 calendar accommodation — Plan Day comes first because W5 work needs to start. Treat the Mon as a long day.
 
 ---
@@ -41,7 +33,48 @@ The Friday **Mid-Sprint Surprise** (an `acquire-gov` prod incident, Workflow 4 +
 ## Topics in scope
 
 - [W4 PLAN — week shape](../W04/PLAN.md)
-- W4 pre-session: Mon (Phase 2 framing + spec-driven dev + AI Security pre-read), Tue (spec-driven workshop + brownfield modernization planning), Wed (OWASP LLM Top 10 deep dive + HITL #6 + dedicated research slot), Thu (OpenRewrite execution day), Fri (Mid-Sprint Surprise pre-brief). Files in `W04/pre-session/`.
+
+**Mon — Phase 2 framing + spec-driven dev + AI Security pre-read**
+- [Phase 2 begins — modernization driven by Phase 1 discoveries](../W04/pre-session/1-Monday/2-phase-2-begins-modernization-driven-by-phase-1-discoveries.md)
+- [AI backlog generation — pair-project-shaped, human-judgment-gated](../W04/pre-session/1-Monday/3-ai-backlog-generation-pair-project-shaped-human-judgment-gated.md)
+- [ADR writing discipline — what Codex full-strictness looks like](../W04/pre-session/1-Monday/4-adr-writing-discipline-what-codex-full-strictness-looks-like-mon.md)
+- [Iterative spec-driven dev — the living discipline](../W04/pre-session/1-Monday/5-iterative-spec-driven-dev-the-living-discipline.md)
+- [Scenario-design planning artifact — the Mon graded artifact](../W04/pre-session/1-Monday/6-scenario-design-planning-artifact-the-mon-graded-artifact.md)
+- [AI Security pre-read — OWASP LLM Top 10:2025 vocabulary](../W04/pre-session/1-Monday/7-ai-security-pre-read-owasp-llm-top-10-2025-vocabulary.md)
+
+**Tue — spec-driven workshop + brownfield modernization planning**
+- [Integration mapping — walking service boundaries](../W04/pre-session/2-Tuesday/2-integration-mapping-walking-service-boundaries.md)
+- [API modernization patterns — Spring Cloud Gateway](../W04/pre-session/2-Tuesday/3-api-modernization-patterns-spring-cloud-gateway.md)
+- [Brownfield planning & analysis (ADR)](../W04/pre-session/2-Tuesday/4-brownfield-planning-and-analysis-adr.md)
+- [OpenRewrite primer — the recipe model](../W04/pre-session/2-Tuesday/5-openrewrite-primer-the-recipe-model.md)
+- [Validation as spec discipline](../W04/pre-session/2-Tuesday/6-validation-as-spec-discipline.md)
+- [ADR writing discipline](../W04/pre-session/2-Tuesday/7-adr-writing-discipline.md)
+
+**Wed — OWASP LLM Top 10 deep dive + HITL #6 + research slot**
+- [Prompt-injection testing — stored content surfaces](../W04/pre-session/3-Wednesday/2-prompt-injection-testing-stored-content-surfaces.md)
+- [PII protection — multi-tenant boundary validation](../W04/pre-session/3-Wednesday/3-pii-protection-multi-tenant-boundary-validation.md)
+- [Spring Security controls — JWT-skip exploit surface](../W04/pre-session/3-Wednesday/4-spring-security-controls-jwt-skip-exploit-surface.md)
+- [HITL #6 — Excessive Agency authority-boundary design](../W04/pre-session/3-Wednesday/5-hitl-6-excessive-agency-authority-boundary-design.md)
+- [Security validation as automated tests](../W04/pre-session/3-Wednesday/6-security-validation-as-automated-tests.md)
+- [Adversarial-review consolidation & spec-driven discipline](../W04/pre-session/3-Wednesday/7-adversarial-review-consolidation-and-spec-driven-discipline.md)
+- [Research — alternative scenario tech + Bedrock Guardrails preview](../W04/pre-session/3-Wednesday/8-research-alternative-scenario-tech-and-bedrock-guardrails-preview.md)
+
+**Thu — OpenRewrite execution day**
+- [Legacy modernization — single-branch design](../W04/pre-session/4-Thursday/2-legacy-modernization-single-branch-design.md)
+- [Incremental migration approaches](../W04/pre-session/4-Thursday/3-incremental-migration-approaches.md)
+- [OpenRewrite hop execution](../W04/pre-session/4-Thursday/4-openrewrite-hop-execution.md)
+- [Workflow augmentation vs replacement](../W04/pre-session/4-Thursday/5-workflow-augmentation-vs-replacement.md)
+- [ADR review — future-hop evidence floor](../W04/pre-session/4-Thursday/6-adr-review-future-hop-evidence-floor.md)
+- [Graceful degradation & rollback rehearsal](../W04/pre-session/4-Thursday/7-graceful-degradation-and-rollback-rehearsal.md)
+- [Deployment planning for incremental rollouts](../W04/pre-session/4-Thursday/8-deployment-planning-for-incremental-rollouts.md)
+
+**Fri — Mid-Sprint Surprise**
+- [Failure-handling patterns](../W04/pre-session/5-Friday/2-failure-handling-patterns.md)
+- [Critical fixes to brownfield](../W04/pre-session/5-Friday/3-critical-fixes-to-brownfield.md)
+- [Impact assessments](../W04/pre-session/5-Friday/4-impact-assessments.md)
+- [Amended plan-spec](../W04/pre-session/5-Friday/5-amended-plan-spec.md)
+- [Amendment trade-off evaluations](../W04/pre-session/5-Friday/6-amendment-tradeoff-evaluations.md)
+
 - W4 war-room incidents — `W04/war-room/`. Mon is Plan Day mode; Tue–Fri are practical/incident-driven.
 
 ### Cross-cutting
@@ -60,7 +93,9 @@ The Friday **Mid-Sprint Surprise** (an `acquire-gov` prod incident, Workflow 4 +
 
 ## Example scenarios (illustrative — distinct from your W4 incidents)
 
-### Example A — Tooling strategy for a brownfield modernization (T2 / T6)
+### Example A — Tooling strategy for a brownfield modernization
+
+*Supporting reading:* [OpenRewrite primer — the recipe model](../W04/pre-session/2-Tuesday/5-openrewrite-primer-the-recipe-model.md) · [Incremental migration approaches](../W04/pre-session/4-Thursday/3-incremental-migration-approaches.md) · [Brownfield planning & analysis (ADR)](../W04/pre-session/2-Tuesday/4-brownfield-planning-and-analysis-adr.md)
 
 > *"Your tech lead is debating three approaches to the next modernization hop: (1) lean on an automated codemod tool (OpenRewrite or similar) to do the heavy lifting and accept manual cleanup after; (2) hand-write a migration playbook + targeted scripts + a senior engineer driving it; (3) defer the hop and tackle smaller debt items first. Defend a choice for this cohort's stack."*
 
@@ -72,11 +107,13 @@ The Friday **Mid-Sprint Surprise** (an `acquire-gov` prod incident, Workflow 4 +
 - The auditor wants you to land on *"it depends, and here's what I'd measure to make it not depend"* — abstract preferences don't survive the press
 
 **Likely follow-up presses:**
-- *T6 — how would you know the codemod tool *missed* something? What's your detection plan?* (Build + test + lint + a sampling review of changed files.)
-- *T2 — does this decision change if the team is staying on this stack for 6 months vs 3 years?* (Yes — investment in tooling pays back over time, not at the migration boundary.)
-- *T5 — what does the *unmigrated* state cost you per week the longer you defer?* (Security patches that only ship on the new baseline; talent pool that won't work on the old one.)
+- *How would you know the codemod tool *missed* something? What's your detection plan?* (Build + test + lint + a sampling review of changed files.)
+- *Does this decision change if the team is staying on this stack for 6 months vs 3 years?* (Yes — investment in tooling pays back over time, not at the migration boundary.)
+- *What does the *unmigrated* state cost you per week the longer you defer?* (Security patches that only ship on the new baseline; talent pool that won't work on the old one.)
 
-### Example B — Authority boundary for an autonomous agent action (T7 / T5 / T1)
+### Example B — Authority boundary for an autonomous agent action
+
+*Supporting reading:* [HITL #6 — Excessive Agency authority-boundary design](../W04/pre-session/3-Wednesday/5-hitl-6-excessive-agency-authority-boundary-design.md) · [Prompt-injection testing — stored content surfaces](../W04/pre-session/3-Wednesday/2-prompt-injection-testing-stored-content-surfaces.md) · [Security validation as automated tests](../W04/pre-session/3-Wednesday/6-security-validation-as-automated-tests.md)
 
 > *"An agent in your pipeline has access to a write action — let's say it can post a comment, file an issue, update a record, or recommend an outcome. Some of the agent's input comes from untrusted sources (vendor-submitted content, retrieved corpus, third-party data). Walk me through how you'd reason about whether this agent should have unsupervised authority for that write action."*
 
@@ -88,11 +125,13 @@ The Friday **Mid-Sprint Surprise** (an `acquire-gov` prod incident, Workflow 4 +
 - Acknowledge the HITL touchpoint #6 framing from W4 Wed — *Excessive Agency* is the literal name of the OWASP category, and your pair already walked your service's surface against it
 
 **Likely follow-up presses:**
-- *T1 — when the agent flags a high-risk action and a human reviews it, what does the audit-log record need to look like later for an OIG audit?* (The signal that triggered the flag, the human review timestamp, the decision, the correlation ID linking back to the source input.)
-- *T5 — what if the human-in-loop reviewer is overloaded and starts rubber-stamping?* (Defense-in-depth: anomaly detection on action-pattern drift, second reviewer for high-impact actions, sampling audits.)
-- *T6 — how do you test this defense before shipping it?* (Adversarial eval set; synthesised injection probes; CI gate that fails the build if the agent invokes the gated action without the gate firing.)
+- *When the agent flags a high-risk action and a human reviews it, what does the audit-log record need to look like later for an OIG audit?* (The signal that triggered the flag, the human review timestamp, the decision, the correlation ID linking back to the source input.)
+- *What if the human-in-loop reviewer is overloaded and starts rubber-stamping?* (Defense-in-depth: anomaly detection on action-pattern drift, second reviewer for high-impact actions, sampling audits.)
+- *How do you test this defense before shipping it?* (Adversarial eval set; synthesised injection probes; CI gate that fails the build if the agent invokes the gated action without the gate firing.)
 
-### Example C — Modernization order-of-operations under risk (T2 / T6)
+### Example C — Modernization order-of-operations under risk
+
+*Supporting reading:* [Legacy modernization — single-branch design](../W04/pre-session/4-Thursday/2-legacy-modernization-single-branch-design.md) · [OpenRewrite hop execution](../W04/pre-session/4-Thursday/4-openrewrite-hop-execution.md) · [Graceful degradation & rollback rehearsal](../W04/pre-session/4-Thursday/7-graceful-degradation-and-rollback-rehearsal.md)
 
 > *"Your pair wants to bundle three changes in the same PR week: bump the language runtime baseline, swap a major dependency, and migrate to a new web-framework version. Each change touches a lot of files. Walk me through how you'd sequence these — or whether you'd sequence them at all."*
 
@@ -104,9 +143,9 @@ The Friday **Mid-Sprint Surprise** (an `acquire-gov` prod incident, Workflow 4 +
 - Tie it to spec-driven discipline — was each of these three changes named in the plan-spec with its own evidence-of-done? If they all got bundled into "modernize the service", that's a plan-quality failure that bites at execution
 
 **Likely follow-up presses:**
-- *T5 — what's the rollback story if hop 2 ships and hop 3 introduces a regression?* (Atomic hops mean atomic rollbacks; you only revert the broken hop.)
-- *T6 — what does CI look like during this sequencing? Three feature branches? One long-lived branch?* (Trunk-based with feature flags is generally cleaner than long-lived branches, but the right answer depends on team size and review cadence.)
-- *T2 — what if a security advisory drops mid-sequence and you need to ship a patch on the *old* baseline?* (Decision: stop the sequence, ship the patch, restart — or accept the patch on the new baseline and accelerate? Names the trade.)
+- *What's the rollback story if hop 2 ships and hop 3 introduces a regression?* (Atomic hops mean atomic rollbacks; you only revert the broken hop.)
+- *What does CI look like during this sequencing? Three feature branches? One long-lived branch?* (Trunk-based with feature flags is generally cleaner than long-lived branches, but the right answer depends on team size and review cadence.)
+- *What if a security advisory drops mid-sequence and you need to ship a patch on the *old* baseline?* (Decision: stop the sequence, ship the patch, restart — or accept the patch on the new baseline and accelerate? Names the trade.)
 
 ---
 

@@ -12,49 +12,19 @@ audience: learner
 
 > Learner-facing prep brief. Covers **W1 LLM Engineering Essentials** + **W2 RAG Architecture**. The 2-hr in-person event is the **90-min written exam** + 30-min cohort debrief. The **30-min 1:1 audit interview** (Zoom) is scheduled separately across the same week. Read this once when it lands and again the morning of.
 
-## At a glance
-
-| Surface | Format | Duration | When |
-|---|---|---|---|
-| **Exam (in-person)** | Scenario-grounded MCQ (Entry tier) or MCQ + short scenario (Senior tier). Both tiers run simultaneously. | 90 min | Tue 9 Jun, inside the 2-hr block |
-| **Cohort debrief** | Instructor walks the flow, no grades surfaced, schedules audit slots | 30 min | Same 2-hr block, after the exam |
-| **Audit interview (1:1)** | Zoom, two auditors splitting the cohort 3-and-3. Tech-grounded opener, then 7-thinking-dim follow-ups. | 30 min per candidate | Async slot you pick that week; you book your own time |
-
-Two different surfaces, two different things being tested. The **exam** asks *"can you demonstrate the named competencies?"*. The **audit** asks *"can you defend the tech you've been working with under interview pressure — and shift frames when the question presses sideways?"*
-
----
-
-## What the audit auditor is doing
-
-Most audit questions start from **a concrete piece of tech** — a model invocation, a chunking decision, a vector store choice, a citation pattern. The auditor opens with a tech-grounded scenario, lets you work the surface for 3-5 min, then **presses sideways** through follow-ups that ladder across the 7 thinking dimensions. Each press is testing whether you can shift frames, not whether you remember a definition.
-
-The 7 lenses the auditor uses (you don't need to memorise them — recognise the *shape* of the press):
-
-| # | Lens | What a press from this lens sounds like |
-|---|------|----------------------------------------|
-| T1 | System | *"What does this change for the team that owns the audit log?"* |
-| T2 | Architecture | *"What does this lock you out of in 6 months?"* |
-| T3 | Design | *"Sketch the request/response — what's the failure shape?"* |
-| T4 | Data & Cloud | *"Postgres or Atlas — defend it. What's the IAM blast radius?"* |
-| T5 | Reliability & Security | *"What breaks first under load? OWASP exposure?"* |
-| T6 | SDLC & Delivery | *"What test would you write? How do you roll back at 3am?"* |
-| T7 | AI Thinking | *"Where's the HITL gate, and why there and not earlier?"* |
-
-For Checkpoint 1, **T7 (AI Thinking) is the spine** — at least 4 of the questions your auditor picks for you will be tagged primary-T7. Expect heavy pressure on grounding, eval discipline, HITL placement, and the cost/latency/quality triangle.
-
----
-
 ## Topics in scope
 
 Everything in `W01/pre-session/` + `W02/pre-session/` + the war-room incidents you actually worked. Linked entry points below — these are *your* pre-session readings, the same ones you've already worked.
 
 ### W1 — LLM Engineering Essentials
 
+- [LLMs as engineering systems — probabilistic vs deterministic, production discipline](../W01/pre-session/4-Thursday/2-llms-as-engineering-systems.md)
 - [Hallucination failure modes](../W01/pre-session/4-Thursday/3-hallucination-failure-modes.md)
 - [Model selection criteria](../W01/pre-session/4-Thursday/4-model-selection-criteria.md)
 - [AWS Bedrock model invocation](../W01/pre-session/4-Thursday/5-aws-bedrock-model-invocation.md)
 - [Streaming responses](../W01/pre-session/4-Thursday/6-streaming-responses.md)
 - [Retry logic & strategies](../W01/pre-session/4-Thursday/7-retry-logic-and-strategies.md)
+- [Cost structure of LLMs — per-token economics, telemetry, caching levers](../W01/pre-session/4-Thursday/8-cost-structure-of-llms.md)
 - [Structured JSON output (Pydantic)](../W01/pre-session/5-Friday/2-structured-json-output-pydantic.md)
 - [Output validation gates](../W01/pre-session/5-Friday/3-output-validation-gates.md)
 - [Context engineering — system prompts, dynamic assembly, compression](../W01/pre-session/5-Friday/4-context-engineering-system-prompts-dynamic-assembly-compression.md)
@@ -65,26 +35,63 @@ Everything in `W01/pre-session/` + `W02/pre-session/` + the war-room incidents y
 ### W2 — RAG Architecture
 
 - [W2 PLAN — week shape](../W02/PLAN.md)
-- W2 pre-session: Mon (RAG architecture intro + vector DB landscape), Tue (chunking + embedding selection), Wed (advanced RAG patterns + multi-tenant retrieval), Thu (RAG fallback patterns + HITL #2), Fri (RAG eval dimensions). Files land in `W02/pre-session/` as the week opens.
+
+**Mon — RAG intro + vector store landscape**
+- [RAG architecture overview](../W02/pre-session/1-Monday/3-rag-architecture-overview.md)
+- [Chunking strategies & vocabulary](../W02/pre-session/1-Monday/4-chunking-strategies-pre-vocabulary.md)
+- [Embedding generation — model & dimensionality](../W02/pre-session/1-Monday/5-embedding-generation-model-and-dimensionality.md)
+- [MongoDB Atlas Vector Search as RAG store](../W02/pre-session/1-Monday/6-mongodb-atlas-vector-search-as-rag-store.md)
+- [LangChain v1.0 posture & ADR discipline](../W02/pre-session/1-Monday/7-langchain-v1-posture-and-adr-discipline.md)
+
+**Tue — chunking + embedding selection**
+- [Why naive RAG breaks](../W02/pre-session/2-Tuesday/2-why-naive-rag-breaks.md)
+- [Retrieval strategies — dense / sparse / hybrid](../W02/pre-session/2-Tuesday/3-retrieval-strategies-dense-sparse-hybrid.md)
+- [Reranking fundamentals](../W02/pre-session/2-Tuesday/4-reranking-fundamentals.md)
+- [Citation grounding](../W02/pre-session/2-Tuesday/5-citation-grounding.md)
+- [Retrieval evaluation & RAGAS metrics](../W02/pre-session/2-Tuesday/6-retrieval-evaluation-and-ragas-metrics.md)
+- [Atlas index management & design artifacts](../W02/pre-session/2-Tuesday/7-atlas-index-management-and-design-artifacts.md)
+
+**Wed — advanced RAG patterns + multi-tenant retrieval**
+- [Advanced RAG retrieval patterns](../W02/pre-session/3-Wednesday/2-advanced-rag-retrieval-patterns.md)
+- [Reranking cascade designs](../W02/pre-session/3-Wednesday/3-reranking-cascade-designs.md)
+- [Multi-tenant retrieval boundaries](../W02/pre-session/3-Wednesday/4-multi-tenant-retrieval-boundaries.md)
+- [RAG caching & index management](../W02/pre-session/3-Wednesday/5-rag-caching-and-index-management.md)
+- [Deterministic fallback patterns](../W02/pre-session/3-Wednesday/6-deterministic-fallback-patterns.md)
+- [RAG pipeline composition & observability](../W02/pre-session/3-Wednesday/7-rag-pipeline-composition-and-observability.md)
+- [RAG anti-patterns](../W02/pre-session/3-Wednesday/8-rag-anti-patterns.md)
+
+**Thu — RAG fallback patterns + HITL #2**
+- [Runtime faithfulness](../W02/pre-session/4-Thursday/2-runtime-faithfulness.md)
+- [HITL #2 — RAG fallback](../W02/pre-session/4-Thursday/3-hitl-2-rag-fallback.md)
+- [RAG security primer](../W02/pre-session/4-Thursday/4-rag-security-primer.md)
+- [Latency tuning for RAG](../W02/pre-session/4-Thursday/5-latency-tuning-rag.md)
+- [Audit trail for retrieval](../W02/pre-session/4-Thursday/6-audit-trail-for-retrieval.md)
+
+**Fri — RAG eval dimensions**
+- [Building a RAG eval harness from scratch](../W02/pre-session/5-Friday/2-building-a-rag-eval-harness-from-scratch.md)
+- [LLM-as-judge for retrieval eval](../W02/pre-session/5-Friday/3-llm-as-judge-for-retrieval-eval.md)
+- [Eval as test fixture & regression framing](../W02/pre-session/5-Friday/4-eval-as-test-fixture-and-regression-framing.md)
+- [Iterative improvement loops — eval / fix / re-eval](../W02/pre-session/5-Friday/5-iterative-improvement-loops-eval-fix-re-eval.md)
+- [Security eval extension — prompt-injection probes](../W02/pre-session/5-Friday/6-security-eval-extension-prompt-injection-probes.md)
+
 - W2 war-room incidents (Mon→Fri) — these *are* the scenarios you'll be pressed on; the wording will differ, the shape will not. Reference [`W02/war-room/`](../W02/war-room/).
 
 ### Cross-cutting (carried from both weeks)
 
-- Probabilistic vs deterministic systems — when each is appropriate, where the contract sits
 - HITL placement: where to put the human, why there and not earlier/later
 - Eval as a CI/CD discipline, not a one-time exercise
 - Citation grounding + faithfulness vs answer-quality vs hallucination rate
 - Multi-tenant retrieval safety — *"agency DLA must never see GSA's draft clause"*
 
-> **Additional QC-team prep packets** — your instructor will share two reference documents from the QC team: **FDE_week1_LLM_Essentials** and **FDE_week2_RAG_Architecture**. These are higher-density scenario banks the QC team has flagged as representative of the *flavour* of question you'll meet — work through them as practice, not as a leak. The actual checkpoint questions are authored from the same content surface but worded differently. Memorising answers from those packets is the wrong move; internalising the *thinking shape* is the right one.
-
 ---
 
 ## Example scenarios (illustrative — distinct from anything you'll see)
 
-These are deliberately *different* scenarios than your week's war-rooms, your pre-session readings, the QC prep packets, AND the actual audit Q bank — but they are the same *shape* as what your auditor will hand you. Use them to test how you'd open, not as a Q&A bank. The auditor will have entirely different concrete tech anchors.
+These are deliberately *different* scenarios than your week's war-rooms, your pre-session readings, AND the actual audit Q bank — but they are the same *shape* as what your auditor will hand you. Use them to test how you'd open, not as a Q&A bank. The auditor will have entirely different concrete tech anchors.
 
-### Example A — Eval discipline at programme start (T6 / T7)
+### Example A — Eval discipline at programme start
+
+*Supporting reading:* [Prompt evaluations & lifecycle management](../W01/pre-session/5-Friday/5-prompt-evaluations-lifecycle-management.md) · [Eval as test fixture & regression framing](../W02/pre-session/5-Friday/4-eval-as-test-fixture-and-regression-framing.md) · [Explicit HITL framing](../W01/pre-session/5-Friday/6-explicit-hitl-framing.md)
 
 > *"Your pair lead says: 'evals are a Phase-2 concern. Right now we need to ship the drafter MVP. We'll add a proper eval suite next sprint.' Defend or push back."*
 
@@ -96,11 +103,13 @@ These are deliberately *different* scenarios than your week's war-rooms, your pr
 - What *could* legitimately be deferred: LLM-as-judge tooling, RAGAS-style automated metrics, observability platform integration. What can't be: a curated set of inputs the team agrees represent "working" + a CI step that compares output against expectation
 
 **Likely follow-up presses:**
-- *T7 — what does the eval set look like for an LLM-driven drafter that's by nature non-deterministic?* (Schema/shape assertions + golden-set human-judged outputs + drift-detection on aggregate metrics.)
-- *T5 — what eval signal would have detected a regression that ships unfaithful answers with valid-looking citations?* (Distinguish citation validity from claim entailment; press on whether the answer can be discussed in those terms.)
-- *T2 — where does the eval live? In the ai-orchestrator? In the Spring Boot service? In a separate eval-service?* (Argues for a separable concern.)
+- *What does the eval set look like for an LLM-driven drafter that's by nature non-deterministic?* (Schema/shape assertions + golden-set human-judged outputs + drift-detection on aggregate metrics.)
+- *What eval signal would have detected a regression that ships unfaithful answers with valid-looking citations?* (Distinguish citation validity from claim entailment; press on whether the answer can be discussed in those terms.)
+- *Where does the eval live? In the ai-orchestrator? In the Spring Boot service? In a separate eval-service?* (Argues for a separable concern.)
 
-### Example B — Diagnostic tree for "confidently wrong" output (T7 / T3)
+### Example B — Diagnostic tree for "confidently wrong" output
+
+*Supporting reading:* [Hallucination failure modes](../W01/pre-session/4-Thursday/3-hallucination-failure-modes.md) · [Runtime faithfulness](../W02/pre-session/4-Thursday/2-runtime-faithfulness.md) · [Citation grounding](../W02/pre-session/2-Tuesday/5-citation-grounding.md)
 
 > *"A contracting officer flags an LLM-generated response that's confidently incorrect — clean prose, plausible structure, wrong content. The retrieval logs look healthy, the response shape passed validation, the citation pointer resolves to a real clause. Walk me through how you'd narrow down what actually went wrong."*
 
@@ -112,11 +121,13 @@ These are deliberately *different* scenarios than your week's war-rooms, your pr
 - Production response: this isn't a "fix the bug" question; it's a "what would have caught this *before* the CO saw it" question. Land there before the auditor presses
 
 **Likely follow-up presses:**
-- *T6 — what's the smallest reproducer you can build for this specific case?*
-- *T5 — what's the right user-facing behaviour when the system *suspects* this class of failure but hasn't proven it?* (Surface uncertainty; don't auto-publish; HITL gate.)
-- *T7 — is "the model was just wrong" an acceptable root cause to write in a post-incident note?* (No — that's giving up on the diagnostic question. Always at least name which of the failure-mode branches you couldn't rule out.)
+- *What's the smallest reproducer you can build for this specific case?*
+- *What's the right user-facing behaviour when the system *suspects* this class of failure but hasn't proven it?* (Surface uncertainty; don't auto-publish; HITL gate.)
+- *Is "the model was just wrong" an acceptable root cause to write in a post-incident note?* (No — that's giving up on the diagnostic question. Always at least name which of the failure-mode branches you couldn't rule out.)
 
-### Example C — Build vs adopt at the retrieval layer (T4 / T2 / T7)
+### Example C — Build vs adopt at the retrieval layer
+
+*Supporting reading:* [RAG architecture overview](../W02/pre-session/1-Monday/3-rag-architecture-overview.md) · [LangChain v1.0 posture & ADR discipline](../W02/pre-session/1-Monday/7-langchain-v1-posture-and-adr-discipline.md) · [Advanced RAG retrieval patterns](../W02/pre-session/3-Wednesday/2-advanced-rag-retrieval-patterns.md)
 
 > *"You're scaffolding the W2 retrieval layer. You can either compose retrieval out of primitives (an embedding model + a vector index + your own ranking) or pull in a higher-level retrieval framework that handles chunking, retrieval, and reranking as one black box. Defend a choice."*
 
@@ -128,9 +139,9 @@ These are deliberately *different* scenarios than your week's war-rooms, your pr
 - Trade you'd defend: framework for the *plumbing* (vector store client, embedding model invocation, batch ingestion), hand-rolled for the *decisions* (chunking, reranking strategy, citation grounding). Don't black-box the parts you'll be asked to defend in Phase 1 Gate
 
 **Likely follow-up presses:**
-- *T6 — how does this choice show up in your CI?* (Framework version pins, breaking-changes risk; primitive composition has more code to test but fewer external moving parts.)
-- *T2 — what does adopting the framework lock you out of by W5?* (Custom KG-augmented retrieval, hybrid scoring across non-supported retrievers.)
-- *T7 — your pair partner says "but the framework just works." What's the diagnostic-thinking answer to that?* (Working is not the same as understanding; you can't operate what you can't diagnose.)
+- *How does this choice show up in your CI?* (Framework version pins, breaking-changes risk; primitive composition has more code to test but fewer external moving parts.)
+- *What does adopting the framework lock you out of by W5?* (Custom KG-augmented retrieval, hybrid scoring across non-supported retrievers.)
+- *Your pair partner says "but the framework just works." What's the diagnostic-thinking answer to that?* (Working is not the same as understanding; you can't operate what you can't diagnose.)
 
 ---
 
@@ -163,12 +174,10 @@ The four highest-leverage hours of prep this week, ordered:
 
 1. **Re-read your own Phase-1 ADRs** (chunking strategy, embedding model, vector store choice, LangChain v1.0 posture). The auditor will press on the *trade-offs you committed to* — not on the abstract space of options. Know what you decided and why
 2. **Walk the W1 Fri + W2 war-room timelines** in your head — what was the incident, what did the cohort try first, what was the load-bearing fix. Most audit openers anchor in a war-room shape you've already touched
-3. **Practice on the QC prep packets** (`FDE_week1_LLM_Essentials` + `FDE_week2_RAG_Architecture`) — *not to memorise answers*, but to feel the question shape and the breadth. Time-box yourself: if a question takes you more than 2 min to find an opening, that's a topic to revisit
-4. **Pick one tech you didn't touch deeply** and read the relevant `research/` brief in the working repo end-to-end — auditors press on modernization tech (Spring Boot upgrade path, FastAPI patterns, AWS SDK v2) even at Checkpoint 1 because it's what you're working in daily. Don't be surprised by a question on async patterns or lifecycle handlers
+3. **Pick one tech you didn't touch deeply** and read the relevant `research/` brief in the working repo end-to-end — auditors press on modernization tech (Spring Boot upgrade path, FastAPI patterns, AWS SDK v2) even at Checkpoint 1 because it's what you're working in daily. Don't be surprised by a question on async patterns or lifecycle handlers
 
 What *not* to do:
 
-- Don't try to memorise the QC packets verbatim. The packets are *flavour*, not the answer key
 - Don't binge new content the night before. You know what you know — sleep matters more
 - Don't go in expecting yes/no questions. Every question lands with at least one follow-up
 

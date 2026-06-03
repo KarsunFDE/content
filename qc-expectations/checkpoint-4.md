@@ -2,23 +2,15 @@
 checkpoint: 4
 title: "QC Audit Expectations — Checkpoint 4: AIOps, Governance, Deployment Readiness"
 covers: ["W05 AIOps anchor week", "W05 OpenTelemetry on AI", "W05 AI-SRE + governance + OWASP LLM Top 10", "W05 AWS managed services"]
-delivery_date: 2026-06-29
+delivery_date: 2026-06-26
 last_verified: 2026-06-03
 read_time_min: 12
 audience: learner
 ---
 
-# Checkpoint 4 — What to Expect (Mon 29 Jun 2026)
+# Checkpoint 4 — What to Expect (Fri 26 Jun 2026)
 
-> Learner-facing prep brief. Covers **W5 AIOps anchor week** — observability on AI workloads, AI-SRE patterns, governance + OWASP LLM Top 10 final pass, AWS managed-service onboarding, and the Final Adversarial Review PR. **Lands the Monday of W6 — collides with W6 Plan Day AND Deployment-Gate prep.** Exam runs early PM; audit interviews async across W6.
-
-## At a glance
-
-| Surface | Format | Duration | When |
-|---|---|---|---|
-| **Plan Day (morning)** | W6 Plan Day — Deployment Gate prep is the main W6 thrust, so this Plan Day is heavier than usual | ~3 hr | Mon 29 Jun AM |
-| **Exam (in-person, early PM)** | Scenario-grounded MCQ + (Senior) short scenario. Reliability + SDLC lenses dominate; AI-Thinking present but not the spine. | 60–90 min | Mon 29 Jun, early afternoon |
-| **Audit interview (1:1)** | Zoom, 30 min. **AI-Thinking floor 3** (same as C3). Reliability + Cloud + SDLC carry the heavier load. | 30 min/candidate | Async slot across W6 |
+> Learner-facing prep brief. Covers **W5 AIOps anchor week** — observability on AI workloads, AI-SRE patterns, governance + OWASP LLM Top 10 final pass, AWS managed-service onboarding, and the Final Adversarial Review PR. **Lands the Friday of W5 — the same day as the Final Adversarial Review PR, closing out the week.** Exam runs early PM; audit interviews async across W6.
 
 This is the **last formal checkpoint** before the Deployment Gate / Final Defense (Thu 2 Jul). The auditor knows this. Expect the audit to feel more like a *senior-engineer technical conversation* than a quiz — you're being calibrated for client deliverability.
 
@@ -30,14 +22,50 @@ C1 tested AI fundamentals. C2 tested agentic topology. C3 tested SDLC discipline
 
 **HITL #7 (Wed)** landed in W5 — the *last* HITL touchpoint of the programme. It frames the **auto-remediation authority boundary**: when AI-SRE can autonomously restart, rollback, or scale, vs. when a human MUST sign off. This is the audit's spine for C4.
 
-**Final Adversarial Review PR** ran Fri 26 Jun. If your pair shipped or failed it, that's fair game. The auditor will press on the security findings + load test results.
+**Final Adversarial Review PR** runs the morning of the same day (Fri 26 Jun), closing out W5. If your pair shipped or failed it, that's fair game — the auditor will press on the security findings + load test results in the afternoon audit.
 
 ---
 
 ## Topics in scope
 
 - [W5 PLAN — week shape](../W05/PLAN.md)
-- W5 pre-session: Mon (AIOps integration + AWS managed-service plan), Tue (OpenTelemetry on AI workloads), Wed (AIOps governance + HITL #7 + research slot), Thu (AIOps platform comparison + AWS managed-service onboarding), Fri (Final Adversarial Review PR — replaces standard war-room). Files in `W05/pre-session/`.
+
+**Mon — AIOps integration + AWS managed-service plan**
+- [Iterative spec-driven dev](../W05/pre-session/1-Monday/2-iterative-spec-driven-dev.md)
+- [AIOps platform walkthrough](../W05/pre-session/1-Monday/3-aiops-platform-walkthrough.md)
+- [AIOps decisions — three ADRs](../W05/pre-session/1-Monday/4-aiops-decisions-three-adrs.md)
+- [Ops governance spec](../W05/pre-session/1-Monday/5-ops-governance-spec.md)
+- [Production-AI scope survey](../W05/pre-session/1-Monday/6-production-ai-scope-survey.md)
+- [AWS managed-services carve-out](../W05/pre-session/1-Monday/7-aws-managed-services-carve-out.md)
+
+**Tue — OpenTelemetry on AI workloads**
+- [Why OTel on AI matters](../W05/pre-session/2-Tuesday/2-why-otel-on-ai-matters.md)
+- [Trace propagation — W3C traceparent](../W05/pre-session/2-Tuesday/3-trace-propagation-w3c-traceparent.md)
+- [Span attributes — GenAI semantic conventions](../W05/pre-session/2-Tuesday/4-span-attributes-gen-ai-semconv.md)
+- [OTel instrumentation — Python AI service](../W05/pre-session/2-Tuesday/5-otel-instrumentation-python-ai-service.md)
+- [Cost as an AIOps signal](../W05/pre-session/2-Tuesday/6-cost-as-aiops-signal.md)
+- [Drift detection — agentic systems](../W05/pre-session/2-Tuesday/7-drift-detection-agentic-systems.md)
+
+**Wed — AIOps governance + HITL #7 + research slot**
+- [HITL #7 — auto-remediation authority](../W05/pre-session/3-Wednesday/2-hitl-7-auto-remediation-authority.md)
+- [AI-SRE pattern walkthrough](../W05/pre-session/3-Wednesday/3-ai-sre-pattern-walkthrough.md)
+- [AIOps constraints — reversibility & blast radius](../W05/pre-session/3-Wednesday/4-aiops-constraints-reversibility-blast-radius.md)
+- [OWASP LLM Top 10 — AIOps-discoverable](../W05/pre-session/3-Wednesday/5-owasp-llm-top-10-aiops-discoverable.md)
+- [Research-day mechanics](../W05/pre-session/3-Wednesday/6-research-day-mechanics.md)
+- [AIOps governance ADR template](../W05/pre-session/3-Wednesday/7-aiops-governance-adr-template.md)
+- [Load-bearing Fri PR — Wed commits](../W05/pre-session/3-Wednesday/8-load-bearing-fri-pr-wed-commits.md)
+
+**Thu — AIOps platform comparison + AWS managed-service onboarding**
+- [AIOps platform compare-matrix workshop](../W05/pre-session/4-Thursday/2-aiops-platform-compare-matrix-workshop.md)
+- [Bedrock Knowledge Bases migration](../W05/pre-session/4-Thursday/3-bedrock-knowledge-bases-migration.md)
+- [Agents-for-Bedrock migration](../W05/pre-session/4-Thursday/4-agents-for-bedrock-migration.md)
+- [Audit logging & responsible AI](../W05/pre-session/4-Thursday/5-audit-logging-and-responsible-ai.md)
+- [Drift-monitoring policy](../W05/pre-session/4-Thursday/6-drift-monitoring-policy.md)
+- [Human-oversight escalation workflows](../W05/pre-session/4-Thursday/7-human-oversight-escalation-workflows.md)
+- [Deployment planning — incident-response runbook](../W05/pre-session/4-Thursday/8-deployment-planning-incident-response-runbook.md)
+
+**Fri — Final Adversarial Review PR** (replaces standard war-room; same day as this checkpoint)
+
 - W5 war-room incidents — `W05/war-room/`.
 
 ### Cross-cutting
@@ -54,7 +82,9 @@ C1 tested AI fundamentals. C2 tested agentic topology. C3 tested SDLC discipline
 
 ## Example scenarios (illustrative — distinct from your W5 incidents)
 
-### Example A — OpenTelemetry span design for a multi-agent flow (T6 / T7 / T5)
+### Example A — OpenTelemetry span design for a multi-agent flow
+
+*Supporting reading:* [Span attributes — GenAI semantic conventions](../W05/pre-session/2-Tuesday/4-span-attributes-gen-ai-semconv.md) · [OTel instrumentation — Python AI service](../W05/pre-session/2-Tuesday/5-otel-instrumentation-python-ai-service.md) · [Trace propagation — W3C traceparent](../W05/pre-session/2-Tuesday/3-trace-propagation-w3c-traceparent.md)
 
 > *"Your evaluator-consensus-SSA flow takes a proposal and emits an audit-log row 4–8 minutes later. The CO is asking 'where did the time go?' for one proposal that took 22 minutes. Your current OpenTelemetry instrumentation has a single top-level span for the whole flow. Walk me through the span tree you'd refactor to."*
 
@@ -66,11 +96,13 @@ C1 tested AI fundamentals. C2 tested agentic topology. C3 tested SDLC discipline
 - The 22-min outlier is most likely *await-ssa-review* — name that distinction; human-wait spans aren't latency bugs, they're business-process spans. The CO needs to see that clearly to ask the right next question
 
 **Likely follow-up presses:**
-- *T2 — does this instrumentation work if you swap LangGraph out for a hand-rolled state machine?* (Decouple span attributes from framework; OTel semantic conventions where possible.)
-- *T5 — what's the cardinality risk on tags?* (Tenant ID + correlation ID are high-card; cost-shape on the observability backend matters.)
-- *T7 — how do you correlate a faithfulness drop in eval with the OTel traces of the same period?* (Common trace-ID surface; faithfulness as a span attribute, not a separate metric.)
+- *Does this instrumentation work if you swap LangGraph out for a hand-rolled state machine?* (Decouple span attributes from framework; OTel semantic conventions where possible.)
+- *What's the cardinality risk on tags?* (Tenant ID + correlation ID are high-card; cost-shape on the observability backend matters.)
+- *How do you correlate a faithfulness drop in eval with the OTel traces of the same period?* (Common trace-ID surface; faithfulness as a span attribute, not a separate metric.)
 
-### Example B — Auto-remediation authority (T7 / T5 / T1)
+### Example B — Auto-remediation authority
+
+*Supporting reading:* [HITL #7 — auto-remediation authority](../W05/pre-session/3-Wednesday/2-hitl-7-auto-remediation-authority.md) · [AIOps constraints — reversibility & blast radius](../W05/pre-session/3-Wednesday/4-aiops-constraints-reversibility-blast-radius.md) · [AI-SRE pattern walkthrough](../W05/pre-session/3-Wednesday/3-ai-sre-pattern-walkthrough.md)
 
 > *"Your AI-SRE detects that the clause-drafter's faithfulness score has dropped from 92% to 81% over the last 4 hours. The remediation playbook says: route traffic to the v1 of the prompt template. Your AI-SRE has the authority to execute this. Last week, a junior auditor caught the same playbook flipping a prompt rollback that masked a real regression for 3 days. Defend the authority boundary you'd draw."*
 
@@ -83,11 +115,13 @@ C1 tested AI fundamentals. C2 tested agentic topology. C3 tested SDLC discipline
 - This isn't bureaucracy — it's the difference between *fixing* a regression and *hiding* it
 
 **Likely follow-up presses:**
-- *T1 — who needs to know within the first hour if the AI-SRE has executed an auto-remediation?* (On-call SRE, instructor, eventually the OIG binder if it touches a contracting flow.)
-- *T6 — what's the audit-log shape for an auto-remediation? You need to be able to reconstruct what the AI-SRE saw and decided.* (Captured signal + threshold + remediation chosen + outcome + human-review timestamp.)
-- *T5 — what's the OWASP LLM10 (unbounded consumption) angle here?* (Auto-remediation that loops or amplifies the problem.)
+- *Who needs to know within the first hour if the AI-SRE has executed an auto-remediation?* (On-call SRE, instructor, eventually the OIG binder if it touches a contracting flow.)
+- *What's the audit-log shape for an auto-remediation? You need to be able to reconstruct what the AI-SRE saw and decided.* (Captured signal + threshold + remediation chosen + outcome + human-review timestamp.)
+- *What's the OWASP LLM10 (unbounded consumption) angle here?* (Auto-remediation that loops or amplifies the problem.)
 
-### Example C — AWS managed-service trade (T4 / T2 / T6)
+### Example C — AWS managed-service trade
+
+*Supporting reading:* [Bedrock Knowledge Bases migration](../W05/pre-session/4-Thursday/3-bedrock-knowledge-bases-migration.md) · [AWS managed-services carve-out](../W05/pre-session/1-Monday/7-aws-managed-services-carve-out.md) · [AIOps platform compare-matrix workshop](../W05/pre-session/4-Thursday/2-aiops-platform-compare-matrix-workshop.md)
 
 > *"Your tech lead is proposing you move from your self-hosted hybrid RAG pipeline (Atlas Vector Search + your own retrieval + your own reranker) to Bedrock Knowledge Bases. The pitch is: less infrastructure, faster onboarding for new corpora, native Bedrock integration. Defend or push back."*
 
@@ -100,9 +134,9 @@ C1 tested AI fundamentals. C2 tested agentic topology. C3 tested SDLC discipline
 - The right answer is rarely "always managed" or "always self-hosted" — it's "for these workloads, managed; for these, self-hosted." Map it to your pair's actual surface
 
 **Likely follow-up presses:**
-- *T6 — how do you migrate without downtime? Dual-write? Shadow read?*
-- *T5 — what's the FedRAMP-relevant trade?* (Managed services have a different boundary-of-responsibility footprint; the OIG binder shifts shape.)
-- *T2 — what does this lock you out of if the cohort's roadmap includes Graph RAG in 6 months?* (Bedrock KBs aren't strong on KG/CG patterns yet; you'd be migrating back out.)
+- *How do you migrate without downtime? Dual-write? Shadow read?*
+- *What's the FedRAMP-relevant trade?* (Managed services have a different boundary-of-responsibility footprint; the OIG binder shifts shape.)
+- *What does this lock you out of if the cohort's roadmap includes Graph RAG in 6 months?* (Bedrock KBs aren't strong on KG/CG patterns yet; you'd be migrating back out.)
 
 ---
 
@@ -138,8 +172,8 @@ Common stuck points:
 
 ## Logistics
 
-- **Mon 29 Jun is the busiest day of the programme** — W6 Plan Day AM + exam early PM + Deployment Gate prep continues into the evening. Sleep Sunday matters
-- **Audit interview** — async across W6. **W6 runs Mon–Thu only** (Fri 3 Jul is Independence Day observed; lost). Final Defense moves to **Thu 2 Jul**. Book your audit slot for Tue or Wed; avoid Thu because Final Defense is the same day
+- **Fri 26 Jun is a heavy day** — Final Adversarial Review PR review in the morning + exam early PM, closing out W5. Sleep Thursday matters
+- **Audit interview** — async across W6. **W6 runs Mon–Thu only** (Fri 3 Jul is Independence Day observed; lost). Final Defense is **Thu 2 Jul**. Book your audit slot for Tue or Wed; avoid Thu because Final Defense is the same day
 - **No retake** — there's no checkpoint after this one. The Deployment Gate / Final Defense is the next assessment surface, and it's a different beast (live presentation + client showcase). If C4 surfaces a gap, the Mon–Wed of W6 is your last window to close it
 
 ---

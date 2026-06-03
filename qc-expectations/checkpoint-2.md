@@ -12,16 +12,6 @@ audience: learner
 
 > Learner-facing prep brief. Covers **W3 Agentic Systems** — single agent → multi-agent → LangGraph HITL → KG/CG thinking. Lands the Tuesday after Phase 1 Gate, so the auditor knows you've just defended Phase 1 and will press on the agentic decisions you made there.
 
-## At a glance
-
-| Surface | Format | Duration | When |
-|---|---|---|---|
-| **Exam (in-person)** | Scenario-grounded MCQ + (Senior) short scenario. Heavier emphasis on multi-agent topology + HITL placement than C1. | 90 min | Tue 16 Jun, inside the 2-hr block |
-| **Cohort debrief** | Instructor walks the flow + schedules audits | 30 min | Same block |
-| **Audit interview (1:1)** | Zoom, 30 min. Tech-grounded opener, 7-thinking-dim follow-ups. **AI-Thinking floor raised to 5** for this checkpoint — agentic IS the AI-thinking content. | 30 min/candidate | Async slot you book |
-
----
-
 ## What's different about C2
 
 Checkpoint 1 tested whether you could reason about a single LLM call grounded in a retrieval. Checkpoint 2 tests whether you can reason about **a graph of LLM calls where state, handoffs, and human gates are all design surfaces**. The auditor opens with a topology decision, presses on what each node owns, and ladders into who-has-authority + how-do-you-test-this.
@@ -40,7 +30,45 @@ If you can defend *where* the HITL gate sits in your pair's agent graph + *why t
 Everything in `W03/pre-session/` + war-room incidents + your pair's W3 ADRs. The PLAN file shape:
 
 - [W3 PLAN — week shape](../W03/PLAN.md)
-- W3 pre-session: Mon (Agentic systems framing + ADR set), Tue (ReAct workflows + single-agent intake-triage), Wed (multi-agent design patterns + KG/CG thinking + scenario research), Thu (state machines + LangGraph HITL deep-dive), Fri (Phase 1 Defense — no normal pre-session). Files in `W03/pre-session/`.
+
+**Mon — agentic framing + ADR set**
+- [Stakeholder demand framing & the irreversibility principle](../W03/pre-session/1-Monday/2-stakeholder-demand-framing-and-the-irreversibility-principle.md)
+- [Agents are state machines with HITL nodes](../W03/pre-session/1-Monday/3-agents-are-state-machines-with-hitl-nodes.md)
+- [Memory patterns — thread vs cross-thread vs shared](../W03/pre-session/1-Monday/4-memory-patterns-thread-vs-cross-thread-vs-shared.md)
+- [Eval-driven agent development](../W03/pre-session/1-Monday/5-eval-driven-agent-development.md)
+- [Iterative spec-driven dev & §0 retro discipline](../W03/pre-session/1-Monday/6-iterative-spec-driven-dev-and-section-zero-retro-discipline.md)
+- [HITL #3 — interrupt-node boundaries (ADR)](../W03/pre-session/1-Monday/7-hitl-interrupt-node-boundaries-adr.md)
+
+**Tue — ReAct workflows + single-agent intake-triage**
+- [ReAct loop — reason / act / observe](../W03/pre-session/2-Tuesday/2-react-loop-reason-act-observe.md)
+- [Tool-calling discipline — Bedrock Claude tool use](../W03/pre-session/2-Tuesday/3-tool-calling-discipline-bedrock-claude-tool-use.md)
+- [Idempotency for state-mutating tools](../W03/pre-session/2-Tuesday/4-idempotency-for-state-mutating-tools.md)
+- [In-context memory & compaction](../W03/pre-session/2-Tuesday/5-in-context-memory-and-compaction.md)
+- [Agentic RAG patterns — self-querying / multi-query fusion / CRAG](../W03/pre-session/2-Tuesday/6-agentic-rag-patterns-self-querying-multi-query-fusion-crag.md)
+- [LangSmith tracing & observability](../W03/pre-session/2-Tuesday/7-langsmith-tracing-observability.md)
+
+**Wed — multi-agent patterns + KG/CG thinking**
+- [Supervisor-worker — the default multi-agent shape](../W03/pre-session/3-Wednesday/2-supervisor-worker-default-multi-agent-shape.md)
+- [Hierarchical orchestration & parallel fan-out](../W03/pre-session/3-Wednesday/3-hierarchical-orchestration-parallel-fan-out.md)
+- [Multi-agent anti-patterns](../W03/pre-session/3-Wednesday/4-multi-agent-anti-patterns.md)
+- [HITL #4 — supervisor-worker soft interrupt](../W03/pre-session/3-Wednesday/5-hitl-supervisor-worker-soft-interrupt.md)
+- [Advanced memory patterns — multi-agent](../W03/pre-session/3-Wednesday/6-advanced-memory-patterns-multi-agent.md)
+- [KG/CG scaffold orchestrator](../W03/pre-session/3-Wednesday/7-kg-cg-scaffold-orchestrator.md)
+- [Research discipline — scenario alternatives](../W03/pre-session/3-Wednesday/8-research-discipline-scenario-alternatives.md)
+
+**Thu — state machines + LangGraph HITL deep-dive**
+- [State schema design — graph state as contract](../W03/pre-session/4-Thursday/2-state-schema-design-graph-state-as-contract.md)
+- [Parallel execution — fan-out / fan-in](../W03/pre-session/4-Thursday/3-parallel-execution-fan-out-fan-in.md)
+- [Checkpointing & persistence — MemorySaver vs PostgresSaver](../W03/pre-session/4-Thursday/4-checkpointing-persistence-memorysaver-vs-postgressaver.md)
+- [Soft vs hard interrupts](../W03/pre-session/4-Thursday/5-soft-vs-hard-interrupts.md)
+- [HITL #5 — hard interrupt, FAR 15.308 audit row](../W03/pre-session/4-Thursday/6-hitl-5-hard-interrupt-far-15308-audit-row.md)
+- [Workflow resiliency & debugging with LangSmith](../W03/pre-session/4-Thursday/7-workflow-resiliency-debugging-with-langsmith.md)
+- [Cost / latency per-node instrumentation](../W03/pre-session/4-Thursday/8-cost-latency-per-node-instrumentation.md)
+
+**Fri — Phase 1 Defense (no normal pre-session)**
+- [W4 modernization arc preview](../W03/pre-session/5-Friday/2-w4-modernization-arc-preview.md)
+- [Defense anti-patterns to avoid](../W03/pre-session/5-Friday/3-defense-anti-patterns-to-avoid.md)
+
 - W3 war-room incidents (Mon→Thu) — `W03/war-room/`. Mon is Plan Day mode; Tue/Wed/Thu are incident-mode.
 
 ### Cross-cutting
@@ -55,7 +83,9 @@ Everything in `W03/pre-session/` + war-room incidents + your pair's W3 ADRs. The
 
 ## Example scenarios (illustrative — distinct from your week's incidents)
 
-### Example A — Multi-agent split decision (T2 / T7)
+### Example A — Multi-agent split decision
+
+*Supporting reading:* [Supervisor-worker — the default multi-agent shape](../W03/pre-session/3-Wednesday/2-supervisor-worker-default-multi-agent-shape.md) · [Multi-agent anti-patterns](../W03/pre-session/3-Wednesday/4-multi-agent-anti-patterns.md) · [Eval-driven agent development](../W03/pre-session/1-Monday/5-eval-driven-agent-development.md)
 
 > *"Your pair built a single ReAct agent for `POST /agent/intake-triage` that ingests an incoming proposal, classifies it against the solicitation type, extracts vendor metadata, and routes to the evaluator queue. The CO is asking why it occasionally mis-routes Section M evaluation criteria into the Section L instructions bucket. Your tech lead wants to split this into three agents. Defend or push back."*
 
@@ -67,11 +97,13 @@ Everything in `W03/pre-session/` + war-room incidents + your pair's W3 ADRs. The
 - HITL question: where would a human gate land in either topology? Same place? Different place?
 
 **Likely follow-up presses:**
-- *T6 — what eval set would you build to actually decide this?*
-- *T5 — if you split, what new failure modes do you introduce at the handoff boundary?* (Lost state, double-classification, partial commits.)
-- *T7 — if the SSA decision step is in this graph, does FAR 15.308 force a particular interrupt-node placement?* (Yes — SSA decision authority cannot be delegated; the model can prepare the decision, the SSA must commit it.)
+- *What eval set would you build to actually decide this?*
+- *If you split, what new failure modes do you introduce at the handoff boundary?* (Lost state, double-classification, partial commits.)
+- *If the SSA decision step is in this graph, does FAR 15.308 force a particular interrupt-node placement?* (Yes — SSA decision authority cannot be delegated; the model can prepare the decision, the SSA must commit it.)
 
-### Example B — LangGraph interrupt + resume contract (T3 / T7 / T6)
+### Example B — LangGraph interrupt + resume contract
+
+*Supporting reading:* [Checkpointing & persistence — MemorySaver vs PostgresSaver](../W03/pre-session/4-Thursday/4-checkpointing-persistence-memorysaver-vs-postgressaver.md) · [State schema design — graph state as contract](../W03/pre-session/4-Thursday/2-state-schema-design-graph-state-as-contract.md) · [Soft vs hard interrupts](../W03/pre-session/4-Thursday/5-soft-vs-hard-interrupts.md)
 
 > *"Your evaluator agent processes a proposal, scores it against the SSDD criteria, then hits an interrupt node that waits for the SSA review. The SSA reviews on Thursday, but Wednesday night a process crashes. When the platform restarts Thursday morning, the SSA's review queue is empty even though no one signed anything. Walk me through what's broken and how you'd build this so it can't happen."*
 
@@ -83,11 +115,13 @@ Everything in `W03/pre-session/` + war-room incidents + your pair's W3 ADRs. The
 - The fix isn't "use Postgres checkpointer" alone — it's "use a durable checkpointer + the audit-log writes are idempotent + the resume contract is explicit"
 
 **Likely follow-up presses:**
-- *T5 — what's the worst-case scenario if you replay an interrupt that already partially committed?* (Double-award, double-CPAR-entry, regulatory issue.)
-- *T6 — how would you test this in CI? You can't kill prod.* (Chaos test in a graph-replay fixture; interrupt + restart, assert state.)
-- *T2 — does the checkpointer become a SPOF? What's the blast radius if Postgres goes down?* (Whole agent graph stalls — design for graceful degradation or fail-fast.)
+- *What's the worst-case scenario if you replay an interrupt that already partially committed?* (Double-award, double-CPAR-entry, regulatory issue.)
+- *How would you test this in CI? You can't kill prod.* (Chaos test in a graph-replay fixture; interrupt + restart, assert state.)
+- *Does the checkpointer become a SPOF? What's the blast radius if Postgres goes down?* (Whole agent graph stalls — design for graceful degradation or fail-fast.)
 
-### Example C — KG vs vector retrieval (T7 / T4)
+### Example C — KG vs vector retrieval
+
+*Supporting reading:* [KG/CG scaffold orchestrator](../W03/pre-session/3-Wednesday/7-kg-cg-scaffold-orchestrator.md) · [Agentic RAG patterns — self-querying / multi-query fusion / CRAG](../W03/pre-session/2-Tuesday/6-agentic-rag-patterns-self-querying-multi-query-fusion-crag.md) · [Advanced memory patterns — multi-agent](../W03/pre-session/3-Wednesday/6-advanced-memory-patterns-multi-agent.md)
 
 > *"Your evaluator agent retrieves prior CPAR entries for the vendor under evaluation. Pure vector search over CPAR free-text gets you 'similar' vendors and 'similar' performance comments. Your pair lead is proposing you add the 17-entity KG into the loop so the agent can traverse Vendor → past Awards → linked CPARs → linked ContractModifications. Defend the trade."*
 
@@ -100,9 +134,9 @@ Everything in `W03/pre-session/` + war-room incidents + your pair's W3 ADRs. The
 - Naming the failure mode: vector-only retrieval missing the *fact* that this vendor had a contract terminated for cause in 2023 is a *correctness* issue, not a relevance issue
 
 **Likely follow-up presses:**
-- *T2 — where does the KG sit in your architecture? Neo4j? A property graph in Postgres? Built on Atlas?*
-- *T6 — how do you keep the KG in sync with the source-of-truth records? Event-driven? Batch?*
-- *T5 — if a CPAR record is corrected after-the-fact, how does the agent know to re-evaluate?*
+- *Where does the KG sit in your architecture? Neo4j? A property graph in Postgres? Built on Atlas?*
+- *How do you keep the KG in sync with the source-of-truth records? Event-driven? Batch?*
+- *If a CPAR record is corrected after-the-fact, how does the agent know to re-evaluate?*
 
 ---
 
