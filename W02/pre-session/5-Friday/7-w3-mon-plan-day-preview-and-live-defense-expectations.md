@@ -4,14 +4,14 @@ day: Fri
 topic_slug: w3-mon-plan-day-preview-and-live-defense-expectations
 topic_title: "W3 Mon Plan Day preview + Live Defense expectations"
 parent_overview: W02/pre-session/5-Friday/1-DailyTopicOverview.md
-estimated_minutes: 10
+estimated_minutes: 6
 sources:
   - url: https://intent-driven.dev/blog/2026/04/29/spec-driven-development-with-adr/
     retrieved_on: 2026-05-26
-    recency_category: hot-tech
+    recency_category: hot-tech-3mo
   - url: https://thebcms.com/blog/spec-driven-development
     retrieved_on: 2026-05-26
-    recency_category: hot-tech
+    recency_category: hot-tech-3mo
   - url: https://asana.com/resources/sprint-retrospective
     retrieved_on: 2026-05-26
     recency_category: foundation-stable
@@ -20,166 +20,147 @@ sources:
     recency_category: foundation-stable
   - url: https://dev.to/finalroundai/i-reviewed-final-round-ai-for-technical-interviews-heres-what-actually-matters-in-2026-47gd
     retrieved_on: 2026-05-26
-    recency_category: hot-tech
-last_verified: 2026-05-26
+    recency_category: hot-tech-3mo
+last_verified: 2026-06-03
 ---
 
 # W3 Mon Plan Day preview + Live Defense expectations
 
-## 1. Learning Objectives
+> [!NOTE]
+> **From topic 6:** today's PR #47 ship/no-ship is the **evidence** W3 Mon's §0 retro consumes — first formal plan-retrospective in the programme (D-036). The §0 retro asks "did Mon's plan-spec survive contact with Tue-Fri reality?" — today's harness output is the answer to one of its questions.
 
-- By the end of this reading, the learner can describe what a "§0 plan retrospective on a multi-day plan-spec" is and why it differs from a generic sprint retrospective.
-- By the end of this reading, the learner can list the categories a plan retrospective covers (what shipped, what dropped, what surprised, what to carry forward) and explain why "what got dropped" is the most-skipped category.
-- By the end of this reading, the learner can articulate the structure of an oral technical defense and name the dimensions a defense rubric weights.
-- By the end of this reading, the learner can describe rubric design that mitigates bias and what "citations as load-bearing, not decorative" means in a defense context.
+## Live Defense rubric snapshot (14:00 today)
 
-## 2. Introduction
+10 min per defender: 2 min opener + 5-6 min probes + 2 min closer.
 
-Two skills are being introduced ahead of next Monday: spec-driven plan retrospectives and live oral defense of technical decisions. Both are practiced disciplines, not naturally-acquired ones — they take repetition and rubric-driven feedback to land.
+| Dimension | What 5/5 looks like | What 2/5 looks like |
+|---|---|---|
+| **Tech-stack fluency** | Names specific config flags, default behaviors, perf characteristics (e.g., Atlas `$rankFusion` weights, `numCandidates` defaults) | "I chose X because the blog post recommended it" |
+| **Trade-off articulation without strawmen** | Names genuine strength of rejected alternative before explaining why it lost *for this constraint* | Presents only the weak version of the competitor |
+| **Domain framing** | Connects choice to OIG / FAR / DFARS / federal-acq constraints | Generic SaaS framing; could be any product |
+| **Citation discipline** | Produces `/web-research` source URL + retrieval date when asked | "I read somewhere that..." with no source |
+| **Constraint awareness** | Names the conditions under which the choice would be wrong | Treats the choice as universally correct |
 
-The plan-retrospective discipline answers a question most teams never formally ask: *did the plan we wrote on Monday survive contact with the work we did Tue–Fri?* Sprint retrospectives ask what went well and what didn't; plan retrospectives ask the more pointed version — *what was wrong with the plan itself*. The distinction matters because a plan-spec is a reviewable artifact (committed to git, cited in PRs, anchored to ADRs). When the work diverges from the spec, the divergence is data about the planning skill, not just about the work.
+Scoring rubric pinned to instructor; defender does not see scores live. Scores returned in W3 Mon 1:1s.
 
-The live oral defense discipline answers a different question: *can you articulate the trade-off you made, in real time, under questioning, without strawmen?* This is the skill that separates an engineer who picked a vector store from an engineer who can defend why this vector store, against these alternatives, given these constraints. The rubric weights the articulation, not the conclusion — different defenders can land on different conclusions and both score well.
+> [!TIP]
+> **Defender common failure-mode to dodge:** defending a pattern as "industry standard" without a citation. The rubric weights **citation discipline as load-bearing, not decorative** — "I read it somewhere" gets scored down. Bring the `/web-research` URL + retrieval date in your head, or be prepared to look it up live. Same bar Codex Adversarial Review applies to PRs.
 
-This reading is the preview for Monday. Specifics of W2's plan and this week's scenario-alternatives live in the daily overview; the discipline here is generic.
+> [!WARNING]
+> **Anti-pattern: vague rubric → cluster at 3/5.** Most internet defense-rubric examples use vague adjectives ("strong articulation", "good awareness") without behavioral anchors at every band. Per the `rubric-no-anchors` pattern: raters cluster scores at 3 because they have no observable definition to discriminate between bands. Signal is destroyed. Today's rubric specifies what 5/5 *and* 2/5 look like with concrete behavior; expect probes that test the exact distinction.
 
-## 3. Core Concepts
+## W3 Mon §0 retrospective — what comes prepared
 
-### 3.1 What a plan retrospective is
+The five-category structure of a plan retro:
 
-A plan retrospective is a structured review of a prior plan-spec, conducted at the start of the next planning cycle, using the intervening work as evidence. In spec-driven development the plan-spec is a versioned artifact (under `openspec/` or equivalent), and the retrospective consumes the commit history, PR comments, ADRs, and eval results from the period since the spec was written ([Architectural Decision Records with Spec-Driven Development — intent-driven.dev, Apr 2026](https://intent-driven.dev/blog/2026/04/29/spec-driven-development-with-adr/), retrieved 2026-05-26).
+| § | Category | Why it matters |
+|---|---|---|
+| §0.1 | What the plan-spec said | Literal re-read — treat Mon spec as *contract* not aspiration |
+| §0.2 | What actually shipped | PRs landed on main Mon → Fri |
+| §0.3 | Where reality diverged | Plan over- / under-predicted / named the wrong thing |
+| §0.4 | **What got dropped** | **Most-skipped** — items in spec Mon not in shipped work Fri |
+| §0.5 | Carries forward | Explicit: still-in-scope, deferred, or cancelled? |
 
-The structure (these are the questions the retrospective answers, in order):
+**W2 dimensions to come prepared to retro:** chunking decision (PR #47 is the evidence), vector store choice (Atlas vs Wed's alternatives), HITL #2 threshold landed where Mon predicted, eval harness scope (Mon's last open question — shipped Fri or under-scoped?).
 
-1. **What did the plan-spec say?** A literal re-reading of the spec at start of cycle. Treat it as a contract, not as an aspiration.
-2. **What actually shipped?** What landed on `main`, with what shape, on what schedule.
-3. **Where did reality diverge from the plan?** The interesting category — where the plan over-predicted, under-predicted, or named the wrong thing.
-4. **What got dropped from the plan?** The most-skipped category. Items that were in the plan-spec at Monday and are not in the shipped work by Friday. Sometimes the drop was correct (the scope was wrong); sometimes the drop was a failure (the team got distracted). The retrospective names which.
-5. **What carries forward into next week's plan?** Carrying forward is not the same as "we will do it next week" — it is an explicit decision about whether the dropped item is still in scope, deferred, or cancelled.
+## W3 also introduces agentic systems + W2 MCQ logistics
 
-### 3.2 Why this differs from a sprint retrospective
+W3 = single-agent Mon-Tue (`POST /agent/intake-triage`), then multi-agent + LangGraph + HITL #5 `interrupt()` Wed-Fri (Evaluator → consensus → SSA). W3 Mon pre-session lives in next week's folder.
 
-A sprint retrospective asks "what went well, what didn't, what should we change about how we work?" A plan retrospective asks the narrower, more specific question — "was the plan itself a good plan?" The artifact under review is the plan-spec, not the team's process.
+**W2 MCQ 16:30** — 10 senior (applied reasoning) + 10 entry (applied recognition), 30 min, **open-book**, honor system on the answers themselves. Format you'll see W3-W6.
 
-Both are useful and they happen at different cadences. The Asana 2026 sprint-retrospective guidance emphasises five steps and psychological safety; the plan retrospective borrows the safety discipline but adds the rigor of comparing against a committed artifact ([Asana — Sprint Retrospective 2026](https://asana.com/resources/sprint-retrospective), retrieved 2026-05-26). The plan retro is closer to a code-review of the plan than to a team-process review.
+## Self-check
 
-### 3.3 What got dropped — the load-bearing category
+> [!NOTE]
+> **Self-check** (30s)
+>
+> 1. The most-skipped category in a plan retro is "what got dropped." Why does it expose planning skill more directly than "what went well/badly"?
+> 2. A defender says "I picked Atlas Vector Search because it's industry standard." Which two rubric dimensions does that answer score lowest on, and what would a 4/5 answer look like?
 
-The "what got dropped" category is the one that exposes the planning skill most directly. Three sub-cases:
+<details>
+<summary>Show answers</summary>
 
-- **Dropped correctly.** The team realised mid-week that the scoped item was not the right scope; the plan over-promised. The retrospective names this and updates the planning heuristic ("next time, scope a research-heavy item to half-a-day, not a full day").
-- **Dropped silently.** The team did not realise the item was dropped until the retrospective named it. This is the failure case. Either the plan was not consulted during the week (the spec was decorative) or the team was not honest about progress.
-- **Dropped under pressure.** The team knew the item was at risk; the choice to drop was deliberate; the trade-off was made consciously. The retrospective surfaces what was traded against what.
+1. Because the plan-spec is a *committed artifact* — every item that was in it Monday is reviewable evidence. A "what went well/badly" retro is about process feelings. "What got dropped" forces a direct comparison: spec at Mon vs ship at Fri, item by item, with a *sub-case* attached (dropped correctly / silently / under pressure). The silent-drop sub-case is the killer signal — it means the team didn't consult the plan during the week (spec was decorative) OR wasn't honest about progress. Process retros can't surface that; plan retros must.
+2. Lowest on **citation discipline** ("industry standard" has no source) and **trade-off articulation without strawmen** (no alternative named, no genuine strength of competitors acknowledged). A 4/5 answer: "Atlas because the Vector Search and BM25 legs share one query path (`$rankFusion` from the Aug 2025 GA per [/web-research URL, retrieved 2026-05-26]), removing a dual-pipeline failure mode we'd hit with Pinecone + Elastic. Pinecone has stronger pure-vector latency at our scale; we lose that to win operational simplicity. We'd flip if QPS exceeded ~500/s where Pinecone's latency edge dominates the simplicity win."
 
-The discipline that keeps "what got dropped" honest: the retrospective output is a written delta in the spec repo, not just a verbal acknowledgment. The delta names the item, the sub-case, and the carry-forward decision ([Spec-Driven Development with ADR — intent-driven.dev](https://intent-driven.dev/blog/2026/04/29/spec-driven-development-with-adr/), retrieved 2026-05-26).
+</details>
 
-### 3.4 The live oral defense — structure
+<details>
+<summary>Dropped sub-cases the retro must distinguish + plan-retro template</summary>
 
-The format that has settled into 2026 technical-skills evaluation:
+**Dropped sub-cases:**
 
-- **2 min opener.** The defender states the decision, the key trade-off, and the most important alternative they rejected. No setup, no preamble — directly into the substance.
-- **5–6 min probes.** The examiner asks pointed questions drawn from a rubric. Questions probe articulation depth, alternative awareness, trade-off honesty, and citation discipline.
-- **2 min closer.** The defender summarises what they would do differently with hindsight, or what would change their decision if a key assumption shifted.
+| Sub-case | Signal |
+|---|---|
+| Dropped correctly | Mid-week realisation scope was wrong; planning heuristic updates ("scope research-heavy items at half-day not full") |
+| Dropped silently | Item not noticed until retro — **failure case**. Plan was decorative OR team wasn't honest about progress |
+| Dropped under pressure | Knew item was at risk, trade-off was deliberate, retro surfaces *what was traded against what* |
 
-The total is typically 10 minutes per defender. The format compresses what would otherwise be a 30-minute conversation into a high-density signal pass. The structure matters because it disciplines the defender — there is no time for hand-waving — and it disciplines the examiner — the rubric is the script, not improvisation.
-
-### 3.5 What the rubric weights
-
-A 2026-typical technical defense rubric weights these dimensions (the specific weights vary by program):
-
-- **Tech-stack fluency.** Does the defender know the actual mechanics of the system they chose? Specific config flags, default behaviors, performance characteristics. This is the dimension that catches "I chose X because the blog post said so" defenders.
-- **Trade-off articulation without strawmen.** Does the defender represent the alternative options fairly, including their genuine strengths? Strawman alternatives (presenting only the weak version of a competitor) score poorly.
-- **Domain framing.** Does the defender connect the technical choice to the domain it serves? A vector-store choice for a regulated industry has different constraints than the same choice for a casual chatbot.
-- **Citation discipline.** Did the defender ground their reasoning in real, retrievable sources rather than vibes? "Citations as load-bearing, not decorative" means a defender who cannot produce the source for a claim under questioning loses points.
-- **Constraint awareness.** Does the defender know what they don't know? Does the defender name the conditions under which their choice would be wrong?
-
-Each dimension scores on an anchored 1–5 scale — anchors describe observable behavior at each band, not vague adjectives. Anchor design is the bias-mitigation tool ([Juicebox — Rubrics for Interviews 2026](https://juicebox.ai/blog/rubrics-for-interviews), retrieved 2026-05-26).
-
-### 3.6 Bias and calibration in oral defense
-
-Oral assessment is inherently susceptible to charisma effects, halo bias, and central-tendency clustering. The mitigation strategies that have shown up in 2026 hiring and assessment literature:
-
-- **Behavioral anchors at every band.** A 5/5 on articulation has a specific definition: "the defender articulates complex ideas with exceptional clarity and proactively structures answers" ([Final Round AI Review — DEV, 2026](https://dev.to/finalroundai/i-reviewed-final-round-ai-for-technical-interviews-heres-what-actually-matters-in-2026-47gd), retrieved 2026-05-26). Without anchors, raters cluster at 3.
-- **Evidence-based scoring.** A score is paired with a specific observation: "scored 4 on trade-off articulation because the defender named the genuine strength of Pinecone before explaining why Atlas was the better fit *for this constraint*." Vague scoring ("good energy") gets thrown out.
-- **Multi-rater calibration.** When more than one rater is available, they score independently first, then compare. Disagreements over 2 bands trigger a calibration discussion. Single-rater scoring is a known weak point but is sometimes unavoidable.
-- **Scores not returned live.** The defender does not see scores during the defense; scores are returned in a separate feedback session. This protects the defender from in-flight defensiveness and protects the rater from charisma-driven score creep.
-
-## 4. Generic Implementation
-
-A plan-retrospective template, in markdown — versioned in the same repo as the plan-spec it reviews:
 
 ```markdown
 # Plan retrospective — Plan-Spec [WXX-Mon, dated YYYY-MM-DD]
 
 ## §0 What the plan said
-[Quote the original plan-spec verbatim — the goals, the named work items, the open questions, the success criteria.]
+[Quote original plan-spec verbatim — goals, named work items, open questions, success criteria.]
 
 ## §1 What shipped
-[List, with PR links: what landed on main between Monday and the retrospective.]
+[List with PR links: what landed on main Mon → Fri.]
 
 ## §2 Where reality diverged
 | Plan item | What actually happened | Why |
 | --- | --- | --- |
-| ... | ... | ... |
 
 ## §3 What got dropped
 | Item | Sub-case (correctly / silently / under-pressure) | Carry-forward decision |
 | --- | --- | --- |
-| ... | ... | ... |
 
 ## §4 Carries forward into next plan-spec
-[Bulleted, with the next-spec section each will appear in.]
+[Bulleted, with next-spec section each will appear in.]
 
 ## §5 Planning heuristic updates
 [What did we learn about how to write the next plan? Concrete, prescriptive.]
 ```
 
-The template is a forcing function — it cannot be filled in with hand-waving. Every cell either has evidence or is left explicitly blank. Left-blank cells are themselves a signal ("we have no evidence about X — that is a gap").
+Template is a forcing function — cannot be filled with hand-waving. Empty cells are themselves a signal ("we have no evidence about X — that's a gap").
 
-## 5. Real-world Patterns
+</details>
 
-**Healthcare — clinical-pathway specification.** A regional health network adopted a spec-first development discipline for clinical-decision-support changes. Plan-specs (typically 1-week cycles) are reviewed at the start of each new cycle against the shipped PRs and the eval delta. The discipline caught a pattern where the team consistently over-scoped corpus-extraction work and under-scoped prompt-engineering work; six weeks of retrospectives let them calibrate the next plan's scoping more accurately ([Spec-Driven Development 2026 Guide — BCMS](https://thebcms.com/blog/spec-driven-development), retrieved 2026-05-26).
+<details>
+<summary>Bias mitigation in oral defense + cross-industry</summary>
 
-**Fintech — engineering interviews.** A consumer-banking team adopted a structured-defense format for senior-engineer hiring after measuring a 3x predictive-validity improvement of structured interviews over unstructured ones. The rubric weighted system-design articulation, cost-trade-off awareness, and constraint reasoning — the same dimensions a programme defense rubric would weight, applied to interviews rather than coursework ([Juicebox — Rubrics for Interviews 2026](https://juicebox.ai/blog/rubrics-for-interviews), retrieved 2026-05-26).
+Oral assessment is susceptible to charisma effects, halo bias, central-tendency clustering. Mitigations:
 
-**Education — academic oral defense.** Engineering graduate programs have used oral defense rubrics for decades; the 2026 evolution has been the addition of "AI infrastructure literacy" dimensions to defenses for ML and systems-engineering students. The defense now probes for "distributed-systems thinking, cost awareness, monitoring, fallback strategies, and a clear grip on what AI can't guarantee" — directly parallel to the dimensions a programme defense weights ([Final Round AI Review — DEV, 2026](https://dev.to/finalroundai/i-reviewed-final-round-ai-for-technical-interviews-heres-what-actually-matters-in-2026-47gd), retrieved 2026-05-26).
+- **Behavioral anchors at every band.** 5/5 has a specific definition ("articulates complex ideas with exceptional clarity AND proactively structures answers"). Without anchors, raters cluster at 3.
+- **Evidence-based scoring.** Score paired with specific observation: "scored 4 on trade-off because the defender named the genuine strength of Pinecone before explaining why Atlas was the better fit for this constraint."
+- **Multi-rater calibration** when possible; disagreements >2 bands trigger discussion. Single-rater is sometimes unavoidable but should be named.
+- **Scores not returned live.** Protects defender from in-flight defensiveness; protects rater from charisma-driven score creep.
 
-## 6. Best Practices
+Cross-industry: healthcare network adopted spec-first plan-retros for clinical-decision-support changes — 6 weeks of retros caught the pattern that the team consistently over-scoped corpus-extraction and under-scoped prompt-engineering. Fintech adopted structured-defense interview format after measuring 3x predictive-validity improvement over unstructured. Engineering grad programs evolved oral defense rubrics to add "AI infrastructure literacy" — distributed-systems thinking, cost awareness, monitoring, fallback strategies, clear grip on what AI can't guarantee.
 
-- Write the plan retrospective against the *committed* plan-spec, not against memory of what the plan said; the artifact is the contract.
-- Cover all five categories (said / shipped / diverged / dropped / carry-forward); skipping "dropped" is the most common failure.
-- Output the retrospective as a versioned markdown file in the same repo as the plan-spec; verbal-only retrospectives don't compound.
-- Prepare opener-and-closer language before a live defense; the 2-minute time bound is not the moment to compose thoughts.
-- Treat citations in a defense as load-bearing — be able to produce the source when asked, including the retrieval date and the specific claim it backs.
-- Use rubrics with behavioral anchors at every band; vague rubrics cluster scores at 3 and lose signal.
-- Score evidence-by-evidence, not impression-by-impression; the rationale paired with each score is the audit trail.
-- Multi-rater calibrate when possible; if single-rater is unavoidable, name it as a known limitation.
+</details>
 
-## 7. Hands-on Exercise
+<details>
+<summary>EOD logistics + retro discipline reminder</summary>
 
-**Whiteboard exercise (12 min):** Pick a recent technical decision you made (or watched a team make) within the last 3 months — choice of database, framework, deployment platform, anything. Sketch:
+**EOD: 3 pair retros + 1 cohort retro** via `templates/weekly-retro.md`. **Don't bury negative signals.** Mon's plan-spec wasn't perfect; Tue/Wed/Thu showed gaps; W3 Mon §0 NEEDS the honest input. If your pair is short on negative signals during the retro, seed prompts:
 
-1. The 2-minute opener you would deliver if you had to defend the decision in a live defense format. Write the actual sentences.
-2. The single most likely probing question an examiner would ask, and the 60-second answer you would give.
-3. The closer — what would you do differently with hindsight, or what assumption would change your decision?
+- "Mon's plan-spec said X. Tue's reality showed Y. Where was the gap?"
+- "One HITL touchpoint you'd wire differently this week?"
+- "What does PR #47's no-merge tell you about your own future PR shapes?"
 
-Then evaluate your own answers against the five rubric dimensions (fluency, articulation without strawmen, domain framing, citation discipline, constraint awareness). For each dimension, score yourself 1–5 with the anchor that justifies the score.
+Codex Adversarial Review (Ramping per D-034) runs on every Fri PR: harness PR + Thu's `legacy_chain.py` migration PR + cleanup PRs. P1 findings block.
 
-**What good looks like:** Your opener gets to the substance in the first sentence — no "so basically..." preambles. Your probing question is the question you would *not* want to be asked (the genuine weak spot of the decision), and your 60-second answer acknowledges the weakness honestly rather than deflecting. Your closer names a specific assumption that, if changed, would flip your decision. Your self-scores are paired with observable anchors ("4 on fluency because I named three specific config flags and their defaults"), not vague impressions ("3 because it felt okay").
+</details>
 
-## 8. Key Takeaways
+<details>
+<summary>Sources (retrieved via /web-research per D-046)</summary>
 
-- What is a §0 plan retrospective, and why does it differ from a generic sprint retrospective?
-- Which category in a plan retrospective is most often skipped, and why does that category expose planning skill more than any other?
-- What structure does a 10-minute live oral defense follow, and what does each segment (opener / probes / closer) test?
-- Which dimensions does a 2026-typical defense rubric weight, and what bias-mitigation patterns does a well-designed rubric carry?
+1. intent-driven.dev — Spec-Driven Dev with ADR (Apr 2026): <https://intent-driven.dev/blog/2026/04/29/spec-driven-development-with-adr/> — 2026-05-26
+2. BCMS — Spec-Driven Development 2026 Guide: <https://thebcms.com/blog/spec-driven-development> — 2026-05-26
+3. Asana — Sprint Retrospective 2026: <https://asana.com/resources/sprint-retrospective> — 2026-05-26
+4. Juicebox — Rubrics for Interviews 2026: <https://juicebox.ai/blog/rubrics-for-interviews> — 2026-05-26
+5. DEV — Final Round AI Review (technical interviews 2026): <https://dev.to/finalroundai/i-reviewed-final-round-ai-for-technical-interviews-heres-what-actually-matters-in-2026-47gd> — 2026-05-26
 
-## Sources
+</details>
 
-1. [Architectural Decision Records with Spec-Driven Development using OpenSpec — intent-driven.dev (Apr 2026)](https://intent-driven.dev/blog/2026/04/29/spec-driven-development-with-adr/) — retrieved 2026-05-26
-2. [Spec-Driven Development (SDD): The Definitive 2026 Guide — BCMS](https://thebcms.com/blog/spec-driven-development) — retrieved 2026-05-26
-3. [Sprint Retrospective: How to Run an Effective Retro [2026] — Asana](https://asana.com/resources/sprint-retrospective) — retrieved 2026-05-26
-4. [The Complete Guide to Using Rubrics for Interviews in 2026 — Juicebox](https://juicebox.ai/blog/rubrics-for-interviews) — retrieved 2026-05-26
-5. [I Reviewed Final Round AI for Technical Interviews: What Actually Matters in 2026 — DEV Community](https://dev.to/finalroundai/i-reviewed-final-round-ai-for-technical-interviews-heres-what-actually-matters-in-2026-47gd) — retrieved 2026-05-26
-
-Last verified: 2026-05-26
+Last verified: 2026-06-03

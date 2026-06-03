@@ -4,84 +4,93 @@ day: Fri
 topic_slug: building-a-rag-eval-harness-from-scratch
 topic_title: "Building a RAG eval harness from scratch — flat-file qa.jsonl"
 parent_overview: W02/pre-session/5-Friday/1-DailyTopicOverview.md
-estimated_minutes: 12
+estimated_minutes: 6
 sources:
   - url: https://github.com/RulinShao/RAG-evaluation-harnesses
     retrieved_on: 2026-05-26
-    recency_category: hot-tech
+    recency_category: hot-tech-3mo
   - url: https://blog.premai.io/rag-evaluation-metrics-frameworks-testing-2026/
     retrieved_on: 2026-05-26
-    recency_category: hot-tech
+    recency_category: hot-tech-3mo
   - url: https://docs.ragas.io/en/latest/concepts/metrics/
     retrieved_on: 2026-05-26
-    recency_category: hot-tech
+    recency_category: hot-tech-3mo
   - url: https://www.getmaxim.ai/articles/the-5-best-rag-evaluation-tools-you-should-know-in-2026/
     retrieved_on: 2026-05-26
-    recency_category: hot-tech
+    recency_category: hot-tech-3mo
   - url: https://medium.com/@steveinatorx_49018/building-a-financial-rag-system-pt-5-how-i-fixed-chunking-to-reach-90-recall-7f1158e934a9
     retrieved_on: 2026-05-26
-    recency_category: hot-tech
-last_verified: 2026-05-26
+    recency_category: hot-tech-3mo
+last_verified: 2026-06-03
 ---
 
 # Building a RAG eval harness from scratch — flat-file qa.jsonl
 
-## 1. Learning Objectives
+> [!NOTE]
+> **From the overview:** today's harness is what *measures* whether a PR still holds the Thursday HITL #2 gate (faithfulness ≥ 0.85 AND relevance ≥ 0.85). PR #47 wins 30% latency but may have broken it — the harness settles it with evidence.
 
-- By the end of this reading, the learner can describe the minimum-viable RAG eval harness as a flat JSONL file plus a runner, and explain why this beats a hosted platform on day one.
-- By the end of this reading, the learner can name the fields a curated QA row must carry so it can grade retrieval and generation together rather than separately.
-- By the end of this reading, the learner can explain what "curation discipline" means — where rows come from, why fabrication is forbidden, and how the QA set grows over time.
-- By the end of this reading, the learner can articulate the cost-and-velocity trade-off between flat-file harnesses and managed eval platforms, and the threshold at which graduation makes sense.
+## The eval pipeline
 
-## 2. Introduction
+```mermaid
+graph LR
+    P[PR opens] --> GHA[GitHub Actions]
+    GHA --> R[Run system on<br/>qa.jsonl rows]
+    R --> J[LLM-as-judge<br/>N=3 per row]
+    J --> D[4 dimensions<br/>F / CR / CP / AR]
+    D --> Δ{Delta vs main<br/>>5% on F or CR?}
+    Δ -->|yes| BLOCK[Status check red<br/>merge button off]
+    Δ -->|no| PASS[Status check green]
+```
 
-For most teams shipping retrieval-augmented generation in 2026, the eval harness arrives months after the first agent does. That is the wrong order. An eval harness is the contract that lets you make a change to a chunking strategy, prompt, or retrieval pipeline and answer the question "did that actually help?" with evidence rather than vibes. Without one, every PR is an argument and every regression is a surprise found by a user.
+The QA row carries enough metadata to grade retrieval *and* generation independently. Five fields are the minimum useful row:
 
-The minimum-viable harness is small: a flat-file dataset of question-and-answer pairs (typically JSONL — one JSON object per line, easy to grep, easy to diff in git), a script that runs each row through the system under test, a grader (either deterministic checks or an LLM-as-judge), and a results writer that produces a per-row scoreboard. No platform, no UI, no dashboard. Just files in a repo that ship and run wherever the code does.
+| Field | Purpose |
+|---|---|
+| `query` | Input string as a user would send it |
+| `ground_truth_answer` | Canonical answer a domain expert would accept |
+| `expected_chunks` | Chunk IDs that *should* be retrieved (recall denominator) |
+| `corpus_sources_expected` | Which corpora must contribute (catches cross-corpus misfires) |
+| `metadata` | Provenance — source URL/ticket-ID, curator, date added |
 
-The reason this is the right starting point — and the reason mature shops still keep a flat-file harness around even after adopting a hosted platform — is governance. A JSONL file under version control is a reviewable artifact. Every row's history is in `git log`. Adding a row is a PR. Removing a row is a PR. The discipline of editing the harness like code is the same discipline you want around the system the harness measures.
+Richer rows add `difficulty`, `failure_modes_targeted` (e.g., `cross-corpus-precedence`, `tenant-isolation`), and curator `notes`. Richer metadata = sliceable scoreboard later.
 
-This reading is the generic shape of that harness. Section 4 lays out the file format and runner; Section 5 shows how three industries unrelated to federal acquisitions have used the same pattern.
+## Today's seed: 20-30 curated rows
 
-## 3. Core Concepts
+Real federal-acq sources only. **Curation rule: never fabricate.** Fabricated rows encode the curator's (or model's) existing biases and the harness becomes a self-fulfilling prophecy.
 
-### 3.1 Anatomy of a QA row
+| Source | Coverage |
+|---|---|
+| Tue's `test_tenant_boundary.py` (Item 10 pin-test) | Stays as pin; harness adds the dimensional measure on top |
+| Thu's 1-row FAR 47.305-2 wrong-chunk fixture | Stays as pin; same logic |
+| 15+ rows from FedBizOpps Q&A logs / SBA archives / GAO bid-protest decisions via `/web-research` | Real evidence with source URLs in row metadata |
 
-The smallest useful row carries five fields:
+Rows without provenance go to `qa-unverified.jsonl` and **do not gate merges**. Verified rows gate.
 
-- `query` — the input string, exactly as it would arrive from a user.
-- `ground_truth_answer` — the answer a domain expert would accept. Not necessarily the only acceptable answer, but the canonical one.
-- `expected_chunks` — identifiers (IDs, hashes, or section labels) of the corpus chunks that *should* be retrieved to answer this query. Lets you score retrieval independently of generation.
-- `corpus_sources_expected` — which corpora (e.g., which document collections) are expected to contribute. Catches "retrieved from the wrong corpus" failure modes that pure semantic similarity scores miss.
-- `metadata` — provenance for the row itself: where it came from, who curated it, when it was added. Rows without provenance get retired.
+> [!WARNING]
+> **Anti-pattern: 5-row tutorial harness.** Internet "RAG eval in 90 min" demos repeatedly ship 5-10 row sets and pick a regression threshold against them. Per the `eval-tiny-sample-set` pattern: thresholds against fewer than ~30 rows sit *inside* the per-row noise floor (~2-3% in practice). A "5% regression" on a 5-row set means one row flipped — it teaches nothing. Today's seed is 20-30 rows; the set grows to 50+ before thresholds become defensible. Sources advocating tiny-set thresholds are flagged for instructor review.
 
-Richer rows add `difficulty` (`easy` / `medium` / `hard` / `adversarial`), `failure_modes_targeted` (e.g., `cross-corpus-precedence`, `numeric-precision`, `tenant-isolation`), and `notes` (free-text for the curator's reasoning). The richer the metadata, the easier it is to slice the scoreboard later.
+## When to graduate to hosted
 
-### 3.2 Flat-file vs. hosted
+Flat-file is right until at least one of: QA set >500 rows, >3 contributors editing concurrently, or eval needs to run against production traffic samples. Below all three, JSONL-in-repo wins — every row's history is in `git log`, every addition is a reviewable PR, the dataset is the same code-review surface as the system it grades. **LangSmith deferred to W5 per D-031.**
 
-Hosted eval platforms (LangSmith, Braintrust, Confident AI, Maxim, and similar) offer dashboards, run history, judge versioning, and dataset management features that flat files cannot. The cost is platform lock-in, an additional surface for a security review, and — most importantly — a workflow that is decoupled from the code-review loop where engineering decisions actually happen ([Maxim — Best RAG Evaluation Tools 2026](https://www.getmaxim.ai/articles/the-5-best-rag-evaluation-tools-you-should-know-in-2026/), retrieved 2026-05-26).
+## Self-check
 
-The decision criterion that has held up across many teams: flat-file is sufficient until at least one of three thresholds is hit — the QA set exceeds roughly 500 rows, more than three contributors are editing it concurrently, or the eval needs to run against production traffic samples rather than a fixed set. Below all three thresholds, the JSONL file in `tests/eval/qa.jsonl` is the right answer.
+> [!NOTE]
+> **Self-check** (30s)
+>
+> 1. Why does `expected_chunks` belong in the row even though the `ground_truth_answer` is also there?
+> 2. Why does the unverified-row split (`qa-unverified.jsonl` separate from gating set) matter, and what does "fabricated rows are a self-fulfilling prophecy" mean?
 
-### 3.3 The curation rule
+<details>
+<summary>Show answers</summary>
 
-The rule that separates a harness that catches real bugs from one that scores well on synthetic data: **never fabricate rows**. Every QA pair traces to a real source — a real user query that surfaced in support tickets, a real document an expert annotated, a real regulatory ambiguity from an archive. Fabricated rows tend to encode the model's existing biases (because the curator is often the model) and the harness becomes a self-fulfilling prophecy.
+1. Because retrieval and generation fail for different reasons and need different fixes. `expected_chunks` lets you score context recall (did we retrieve the right chunks?) independently of faithfulness (did the model stay on-source?). Without it, a system that generates the right answer from the wrong chunks scores high overall and the retrieval bug stays hidden — exactly the wrong-chunk failure mode Thu's HITL #2 was wired to catch.
+2. Unverified rows let you capture candidate rows fast (during war-room) without polluting the gating signal. "Self-fulfilling prophecy" means: when the curator (often the model) fabricates a row, the row reflects the model's existing biases — the model will score well on it because the row was generated to match what the model already does. The harness then reports green while real users hit failures.
 
-In practice this looks like: a curation log alongside the JSONL file, citing the source URL or ticket ID for each row. Rows without provenance are quarantined to a separate `qa-unverified.jsonl` and don't gate merges. Rows with provenance gate merges. This split is the single highest-leverage governance choice ([Building a Financial RAG System — How I Fixed Chunking to Reach 90% Recall](https://medium.com/@steveinatorx_49018/building-a-financial-rag-system-pt-5-how-i-fixed-chunking-to-reach-90-recall-7f1158e934a9), retrieved 2026-05-26).
+</details>
 
-### 3.4 Growth strategy
-
-A QA set is never finished — the question is how it grows. Three signals add rows automatically (with curator review):
-
-- A production failure surfaced by a user → triage → if the failure mode isn't represented in the current set, add a row.
-- A near-miss caught by a sibling check (e.g., a pin-test or smoke test) → if the failure mode generalises, add a dimensional row.
-- A new corpus or new document type arriving in the system → at least one row per new document class.
-
-The compounding effect is the point: a 50-row harness from week one that grows to 250 rows over a quarter — every row earned by real evidence — outperforms a 500-row synthetic harness shipped on day one. The flat-file format makes this growth visible in the repo's commit history.
-
-## 4. Generic Implementation
-
-A minimal harness runner, in plain Python — no framework abstractions, no `Chain` class, no `|` pipe composition:
+<details>
+<summary>Generic Python runner — boring on purpose</summary>
 
 ```python
 # tests/eval/run_eval.py
@@ -100,82 +109,61 @@ def load_rows(path):
                 yield json.loads(line)
 
 def grade_retrieval(retrieved_chunks, expected_chunks):
-    """Recall: of the expected, how many were retrieved? Precision: of the retrieved, how many were expected?"""
+    """Recall + precision on chunk IDs — deterministic, fast."""
     retrieved_ids = {c["id"] for c in retrieved_chunks}
     expected_ids = set(expected_chunks)
     if not expected_ids:
         return {"recall": None, "precision": None}
     recall = len(retrieved_ids & expected_ids) / len(expected_ids)
-    precision = (
-        len(retrieved_ids & expected_ids) / len(retrieved_ids)
-        if retrieved_ids else 0.0
-    )
+    precision = (len(retrieved_ids & expected_ids) / len(retrieved_ids)) if retrieved_ids else 0.0
     return {"recall": recall, "precision": precision}
 
 def main():
     with RESULTS.open("w") as out:
         for row in load_rows(DATASET):
-            response = answer_query(row["query"])  # returns answer + retrieved_chunks
+            response = answer_query(row["query"])
             retrieval_scores = grade_retrieval(response.retrieved_chunks, row["expected_chunks"])
             out.write(json.dumps({
                 "row_id": row.get("id"),
                 "query": row["query"],
                 "answer": response.answer,
                 "retrieval": retrieval_scores,
-                # generation grading (LLM-as-judge) is added in the next reading
+                # LLM-as-judge layer lives in tests/eval/judge.py (topic 3)
             }) + "\n")
 
 if __name__ == "__main__":
     main()
 ```
 
-The runner is intentionally boring. It loads rows, calls the system, scores retrieval, writes results. The LLM-as-judge layer is a separate concern (covered in the next topic reading). Keeping the runner this small is what lets it survive multiple refactors of the system under test.
+Plain Python composition. No `Chain` subclass. No LCEL `|` pipe. No `chain.run()`. Per D-033 + `known-bad-patterns.yml` IDs `langchain-chain-class`, `langchain-lcel-pipe`, `langchain-chaining-verb`.
 
-## 5. Real-world Patterns
+</details>
 
-**Fintech — credit-card chargeback dispute generation.** A team at a mid-size payments processor built a flat-file QA harness for an internal RAG agent that helps support reps draft chargeback responses. Curation came from the existing dispute archive (1,200 historical disputes with adjudicated outcomes). They achieved a 40% improvement in recall — from 0.526 to 0.738 — by iterating chunking strategies against the harness; without the harness they would have shipped the first chunking strategy and never noticed the regression in section-spanning regulatory citations ([Building a Financial RAG System Pt 5 — Steven B, Feb 2026](https://medium.com/@steveinatorx_49018/building-a-financial-rag-system-pt-5-how-i-fixed-chunking-to-reach-90-recall-7f1158e934a9), retrieved 2026-05-26).
+<details>
+<summary>Growth strategy + cross-industry patterns</summary>
 
-**Healthcare — medication-safety decision support.** Researchers evaluating LLMs for medication-safety triage built a 91-row scenario harness covering 40 clinical vignettes across 16 specialties. The rows came from real adverse-event reports, not from synthetic generation. The harness exposed a 13.3% performance gap in high-risk scenarios versus low-risk ones — a gap that would have been invisible to an aggregate score ([Large language model as clinical decision support system augments medication safety, PMC 12629785](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12629785/), retrieved 2026-05-26).
+QA set grows by three signals (always with curator review):
 
-**E-commerce — product-question answering.** A large marketplace shipped a flat-file harness covering 320 historical "is this product compatible with X" questions where customer-service had recorded the correct answer. The set was small enough to grep, small enough that every team member could read it in an afternoon. When they later moved to a hosted platform, they kept the JSONL as the canonical authoring surface and synced to the platform — the platform was the dashboard, not the source of truth ([Maxim — Best RAG Evaluation Tools 2026](https://www.getmaxim.ai/articles/the-5-best-rag-evaluation-tools-you-should-know-in-2026/), retrieved 2026-05-26).
+- Production failure surfaced by a user → triage → if failure mode not represented, add a row.
+- Near-miss caught by a sibling check (pin-test, smoke test) → if generalisable, add a dimensional row.
+- New corpus or new document type arriving → at least one row per new class.
 
-## 6. Best Practices
+**Compounding effect:** a 50-row harness from week one growing to 250 over a quarter — every row earned by real evidence — outperforms a 500-row synthetic harness shipped on day one.
 
-- Curate rows from real evidence (tickets, archives, expert annotations) and reject fabricated rows — quarantine unverified rows in a separate file that does not gate merges.
-- Keep the runner small enough that any team member can read it in five minutes; complexity belongs in the system under test, not the harness.
-- Version the dataset in git alongside the code it grades; every row addition or removal is a reviewable diff.
-- Add a row for every production failure that surfaces; the harness grows by evidence, not by synthetic expansion.
-- Separate retrieval scoring (deterministic, fast) from generation scoring (LLM-as-judge, slower); they fail for different reasons and need different fix paths.
-- Tag rows with `difficulty` and `failure_mode` metadata so the scoreboard can be sliced — an aggregate average hides the high-risk subset.
-- Decide upfront when you would graduate to a hosted platform (typically: >500 rows, >3 contributors, or production-traffic eval); flat-file until then.
+Cross-industry: fintech chargeback assistant moved recall 0.526 → 0.738 by iterating chunking against a harness curated from historical disputes; healthcare medication-safety triage exposed a 13.3% high-risk-vs-low-risk gap a single aggregate score would have hidden; e-commerce kept JSONL as authoring surface even after moving to a hosted platform (platform = dashboard, JSONL = source of truth).
 
-## 7. Hands-on Exercise
+</details>
 
-**Whiteboard exercise (15 min):** You are starting a new RAG agent that helps internal employees answer "is this expense reimbursable" questions against a company's expense policy + IRS guidance corpus. You have access to (a) the last 6 months of help-desk tickets, (b) the policy documents, (c) a domain expert (the corporate controller) for 2 hours per week.
+<details>
+<summary>Sources (retrieved via /web-research per D-046)</summary>
 
-Sketch:
+1. RAG Evaluation Harnesses — RulinShao GitHub: <https://github.com/RulinShao/RAG-evaluation-harnesses> — 2026-05-26
+2. Prem AI — RAG Evaluation 2026: <https://blog.premai.io/rag-evaluation-metrics-frameworks-testing-2026/> — 2026-05-26
+3. RAGAS metrics overview: <https://docs.ragas.io/en/latest/concepts/metrics/> — 2026-05-26
+4. Maxim — Best RAG Evaluation Tools 2026: <https://www.getmaxim.ai/articles/the-5-best-rag-evaluation-tools-you-should-know-in-2026/> — 2026-05-26
+5. Financial RAG — chunking to 90% recall: <https://medium.com/@steveinatorx_49018/building-a-financial-rag-system-pt-5-how-i-fixed-chunking-to-reach-90-recall-7f1158e934a9> — 2026-05-26
+6. PMC 12629785 — clinical LLM benchmark: <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12629785/> — 2026-05-26
 
-1. The `qa.jsonl` row schema you would use (which fields, why).
-2. Where the first 25 rows would come from, in priority order.
-3. One row you would deliberately put in `qa-unverified.jsonl` rather than the main set, and why.
-4. The first three failure-mode tags you would attach to rows, and why those three.
+</details>
 
-**What good looks like:** Your row schema includes provenance (`source_ticket_id` or `source_section`) and at least one slice key (`difficulty` or `failure_mode`). Your first-25 plan starts with help-desk tickets where the controller already adjudicated the answer (real evidence with ground truth) before touching synthetic expansion. Your unverified row is one where the controller hasn't yet confirmed — you separate it so it does not gate merges. Your failure-mode tags are concrete enough to slice on (e.g., `policy-vs-irs-precedence`, `numeric-threshold-edge`, `multi-receipt-claim`) rather than vague (e.g., `tricky` or `edge-case`).
-
-## 8. Key Takeaways
-
-- Why is JSONL-in-the-repo the right minimum-viable eval harness, and what governance properties does it have that a hosted platform doesn't?
-- Which fields does a QA row need to grade retrieval and generation independently, and why does separating them matter?
-- What is the curation rule that distinguishes a harness that catches real bugs from one that scores well on synthetic data?
-- At what thresholds would you graduate from flat-file to hosted, and what would you keep flat-file even after graduation?
-
-## Sources
-
-1. [RAG Evaluation Harnesses — RulinShao GitHub](https://github.com/RulinShao/RAG-evaluation-harnesses) — retrieved 2026-05-26
-2. [RAG Evaluation: Metrics, Frameworks & Testing (2026) — Prem AI](https://blog.premai.io/rag-evaluation-metrics-frameworks-testing-2026/) — retrieved 2026-05-26
-3. [RAGAS — Overview of available metrics](https://docs.ragas.io/en/latest/concepts/metrics/) — retrieved 2026-05-26
-4. [The 5 Best RAG Evaluation Tools You Should Know in 2026 — Maxim AI](https://www.getmaxim.ai/articles/the-5-best-rag-evaluation-tools-you-should-know-in-2026/) — retrieved 2026-05-26
-5. [Building a Financial RAG System Pt 5 — How I Fixed Chunking to Reach 90% Recall (Steven B, Feb 2026)](https://medium.com/@steveinatorx_49018/building-a-financial-rag-system-pt-5-how-i-fixed-chunking-to-reach-90-recall-7f1158e934a9) — retrieved 2026-05-26
-6. [Large language model as clinical decision support system augments medication safety in 16 clinical specialties — PMC 12629785](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12629785/) — retrieved 2026-05-26
-
-Last verified: 2026-05-26
+Last verified: 2026-06-03
