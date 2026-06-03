@@ -14,7 +14,7 @@ audience: learner
 
 ## Topics in scope
 
-Everything in `W01/pre-session/` + `W02/pre-session/` + the war-room incidents you actually worked. Linked entry points below — these are *your* pre-session readings, the same ones you've already worked.
+Everything in `W01/pre-session/` + `W02/pre-session/`. Linked entry points below — these are *your* pre-session readings, the same ones you've already worked.
 
 ### W1 — LLM Engineering Essentials
 
@@ -34,24 +34,17 @@ Everything in `W01/pre-session/` + `W02/pre-session/` + the war-room incidents y
 
 ### W2 — RAG Architecture
 
-- [W2 PLAN — week shape](../W02/PLAN.md)
-
-**Mon — RAG intro + vector store landscape**
 - [RAG architecture overview](../W02/pre-session/1-Monday/3-rag-architecture-overview.md)
 - [Chunking strategies & vocabulary](../W02/pre-session/1-Monday/4-chunking-strategies-pre-vocabulary.md)
 - [Embedding generation — model & dimensionality](../W02/pre-session/1-Monday/5-embedding-generation-model-and-dimensionality.md)
 - [MongoDB Atlas Vector Search as RAG store](../W02/pre-session/1-Monday/6-mongodb-atlas-vector-search-as-rag-store.md)
 - [LangChain v1.0 posture & ADR discipline](../W02/pre-session/1-Monday/7-langchain-v1-posture-and-adr-discipline.md)
-
-**Tue — chunking + embedding selection**
 - [Why naive RAG breaks](../W02/pre-session/2-Tuesday/2-why-naive-rag-breaks.md)
 - [Retrieval strategies — dense / sparse / hybrid](../W02/pre-session/2-Tuesday/3-retrieval-strategies-dense-sparse-hybrid.md)
 - [Reranking fundamentals](../W02/pre-session/2-Tuesday/4-reranking-fundamentals.md)
 - [Citation grounding](../W02/pre-session/2-Tuesday/5-citation-grounding.md)
 - [Retrieval evaluation & RAGAS metrics](../W02/pre-session/2-Tuesday/6-retrieval-evaluation-and-ragas-metrics.md)
 - [Atlas index management & design artifacts](../W02/pre-session/2-Tuesday/7-atlas-index-management-and-design-artifacts.md)
-
-**Wed — advanced RAG patterns + multi-tenant retrieval**
 - [Advanced RAG retrieval patterns](../W02/pre-session/3-Wednesday/2-advanced-rag-retrieval-patterns.md)
 - [Reranking cascade designs](../W02/pre-session/3-Wednesday/3-reranking-cascade-designs.md)
 - [Multi-tenant retrieval boundaries](../W02/pre-session/3-Wednesday/4-multi-tenant-retrieval-boundaries.md)
@@ -59,22 +52,16 @@ Everything in `W01/pre-session/` + `W02/pre-session/` + the war-room incidents y
 - [Deterministic fallback patterns](../W02/pre-session/3-Wednesday/6-deterministic-fallback-patterns.md)
 - [RAG pipeline composition & observability](../W02/pre-session/3-Wednesday/7-rag-pipeline-composition-and-observability.md)
 - [RAG anti-patterns](../W02/pre-session/3-Wednesday/8-rag-anti-patterns.md)
-
-**Thu — RAG fallback patterns + HITL #2**
 - [Runtime faithfulness](../W02/pre-session/4-Thursday/2-runtime-faithfulness.md)
 - [HITL #2 — RAG fallback](../W02/pre-session/4-Thursday/3-hitl-2-rag-fallback.md)
 - [RAG security primer](../W02/pre-session/4-Thursday/4-rag-security-primer.md)
 - [Latency tuning for RAG](../W02/pre-session/4-Thursday/5-latency-tuning-rag.md)
 - [Audit trail for retrieval](../W02/pre-session/4-Thursday/6-audit-trail-for-retrieval.md)
-
-**Fri — RAG eval dimensions**
 - [Building a RAG eval harness from scratch](../W02/pre-session/5-Friday/2-building-a-rag-eval-harness-from-scratch.md)
 - [LLM-as-judge for retrieval eval](../W02/pre-session/5-Friday/3-llm-as-judge-for-retrieval-eval.md)
 - [Eval as test fixture & regression framing](../W02/pre-session/5-Friday/4-eval-as-test-fixture-and-regression-framing.md)
 - [Iterative improvement loops — eval / fix / re-eval](../W02/pre-session/5-Friday/5-iterative-improvement-loops-eval-fix-re-eval.md)
 - [Security eval extension — prompt-injection probes](../W02/pre-session/5-Friday/6-security-eval-extension-prompt-injection-probes.md)
-
-- W2 war-room incidents (Mon→Fri) — these *are* the scenarios you'll be pressed on; the wording will differ, the shape will not. Reference [`W02/war-room/`](../W02/war-room/).
 
 ### Cross-cutting (carried from both weeks)
 
@@ -87,7 +74,7 @@ Everything in `W01/pre-session/` + `W02/pre-session/` + the war-room incidents y
 
 ## Example scenarios (illustrative — distinct from anything you'll see)
 
-These are deliberately *different* scenarios than your week's war-rooms, your pre-session readings, AND the actual audit Q bank — but they are the same *shape* as what your auditor will hand you. Use them to test how you'd open, not as a Q&A bank. The auditor will have entirely different concrete tech anchors.
+These are deliberately *different* scenarios than your pre-session readings AND the actual audit Q bank — but they are the same *shape* as what your auditor will hand you. Use them to test how you'd open, not as a Q&A bank. The auditor will have entirely different concrete tech anchors.
 
 ### Example A — Eval discipline at programme start
 
@@ -173,7 +160,7 @@ Both tiers see the same question bank in the audit. Each question has two bars �
 The four highest-leverage hours of prep this week, ordered:
 
 1. **Re-read your own Phase-1 ADRs** (chunking strategy, embedding model, vector store choice, LangChain v1.0 posture). The auditor will press on the *trade-offs you committed to* — not on the abstract space of options. Know what you decided and why
-2. **Walk the W1 Fri + W2 war-room timelines** in your head — what was the incident, what did the cohort try first, what was the load-bearing fix. Most audit openers anchor in a war-room shape you've already touched
+2. **Walk the W1 Fri + W2 failure scenarios** in your head — for each, what was the failure mode, what would you try first, what's the load-bearing fix. Most audit openers anchor in a scenario shape you've already worked
 3. **Pick one tech you didn't touch deeply** and read the relevant `research/` brief in the working repo end-to-end — auditors press on modernization tech (Spring Boot upgrade path, FastAPI patterns, AWS SDK v2) even at Checkpoint 1 because it's what you're working in daily. Don't be surprised by a question on async patterns or lifecycle handlers
 
 What *not* to do:

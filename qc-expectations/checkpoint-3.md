@@ -32,25 +32,18 @@ The Friday **Mid-Sprint Surprise** (an `acquire-gov` prod incident, Workflow 4 +
 
 ## Topics in scope
 
-- [W4 PLAN — week shape](../W04/PLAN.md)
-
-**Mon — Phase 2 framing + spec-driven dev + AI Security pre-read**
 - [Phase 2 begins — modernization driven by Phase 1 discoveries](../W04/pre-session/1-Monday/2-phase-2-begins-modernization-driven-by-phase-1-discoveries.md)
 - [AI backlog generation — pair-project-shaped, human-judgment-gated](../W04/pre-session/1-Monday/3-ai-backlog-generation-pair-project-shaped-human-judgment-gated.md)
 - [ADR writing discipline — what Codex full-strictness looks like](../W04/pre-session/1-Monday/4-adr-writing-discipline-what-codex-full-strictness-looks-like-mon.md)
 - [Iterative spec-driven dev — the living discipline](../W04/pre-session/1-Monday/5-iterative-spec-driven-dev-the-living-discipline.md)
 - [Scenario-design planning artifact — the Mon graded artifact](../W04/pre-session/1-Monday/6-scenario-design-planning-artifact-the-mon-graded-artifact.md)
 - [AI Security pre-read — OWASP LLM Top 10:2025 vocabulary](../W04/pre-session/1-Monday/7-ai-security-pre-read-owasp-llm-top-10-2025-vocabulary.md)
-
-**Tue — spec-driven workshop + brownfield modernization planning**
 - [Integration mapping — walking service boundaries](../W04/pre-session/2-Tuesday/2-integration-mapping-walking-service-boundaries.md)
 - [API modernization patterns — Spring Cloud Gateway](../W04/pre-session/2-Tuesday/3-api-modernization-patterns-spring-cloud-gateway.md)
 - [Brownfield planning & analysis (ADR)](../W04/pre-session/2-Tuesday/4-brownfield-planning-and-analysis-adr.md)
 - [OpenRewrite primer — the recipe model](../W04/pre-session/2-Tuesday/5-openrewrite-primer-the-recipe-model.md)
 - [Validation as spec discipline](../W04/pre-session/2-Tuesday/6-validation-as-spec-discipline.md)
 - [ADR writing discipline](../W04/pre-session/2-Tuesday/7-adr-writing-discipline.md)
-
-**Wed — OWASP LLM Top 10 deep dive + HITL #6 + research slot**
 - [Prompt-injection testing — stored content surfaces](../W04/pre-session/3-Wednesday/2-prompt-injection-testing-stored-content-surfaces.md)
 - [PII protection — multi-tenant boundary validation](../W04/pre-session/3-Wednesday/3-pii-protection-multi-tenant-boundary-validation.md)
 - [Spring Security controls — JWT-skip exploit surface](../W04/pre-session/3-Wednesday/4-spring-security-controls-jwt-skip-exploit-surface.md)
@@ -58,8 +51,6 @@ The Friday **Mid-Sprint Surprise** (an `acquire-gov` prod incident, Workflow 4 +
 - [Security validation as automated tests](../W04/pre-session/3-Wednesday/6-security-validation-as-automated-tests.md)
 - [Adversarial-review consolidation & spec-driven discipline](../W04/pre-session/3-Wednesday/7-adversarial-review-consolidation-and-spec-driven-discipline.md)
 - [Research — alternative scenario tech + Bedrock Guardrails preview](../W04/pre-session/3-Wednesday/8-research-alternative-scenario-tech-and-bedrock-guardrails-preview.md)
-
-**Thu — OpenRewrite execution day**
 - [Legacy modernization — single-branch design](../W04/pre-session/4-Thursday/2-legacy-modernization-single-branch-design.md)
 - [Incremental migration approaches](../W04/pre-session/4-Thursday/3-incremental-migration-approaches.md)
 - [OpenRewrite hop execution](../W04/pre-session/4-Thursday/4-openrewrite-hop-execution.md)
@@ -67,15 +58,11 @@ The Friday **Mid-Sprint Surprise** (an `acquire-gov` prod incident, Workflow 4 +
 - [ADR review — future-hop evidence floor](../W04/pre-session/4-Thursday/6-adr-review-future-hop-evidence-floor.md)
 - [Graceful degradation & rollback rehearsal](../W04/pre-session/4-Thursday/7-graceful-degradation-and-rollback-rehearsal.md)
 - [Deployment planning for incremental rollouts](../W04/pre-session/4-Thursday/8-deployment-planning-for-incremental-rollouts.md)
-
-**Fri — Mid-Sprint Surprise**
 - [Failure-handling patterns](../W04/pre-session/5-Friday/2-failure-handling-patterns.md)
 - [Critical fixes to brownfield](../W04/pre-session/5-Friday/3-critical-fixes-to-brownfield.md)
 - [Impact assessments](../W04/pre-session/5-Friday/4-impact-assessments.md)
 - [Amended plan-spec](../W04/pre-session/5-Friday/5-amended-plan-spec.md)
 - [Amendment trade-off evaluations](../W04/pre-session/5-Friday/6-amendment-tradeoff-evaluations.md)
-
-- W4 war-room incidents — `W04/war-room/`. Mon is Plan Day mode; Tue–Fri are practical/incident-driven.
 
 ### Cross-cutting
 

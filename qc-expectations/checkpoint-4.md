@@ -28,25 +28,18 @@ C1 tested AI fundamentals. C2 tested agentic topology. C3 tested SDLC discipline
 
 ## Topics in scope
 
-- [W5 PLAN — week shape](../W05/PLAN.md)
-
-**Mon — AIOps integration + AWS managed-service plan**
 - [Iterative spec-driven dev](../W05/pre-session/1-Monday/2-iterative-spec-driven-dev.md)
 - [AIOps platform walkthrough](../W05/pre-session/1-Monday/3-aiops-platform-walkthrough.md)
 - [AIOps decisions — three ADRs](../W05/pre-session/1-Monday/4-aiops-decisions-three-adrs.md)
 - [Ops governance spec](../W05/pre-session/1-Monday/5-ops-governance-spec.md)
 - [Production-AI scope survey](../W05/pre-session/1-Monday/6-production-ai-scope-survey.md)
 - [AWS managed-services carve-out](../W05/pre-session/1-Monday/7-aws-managed-services-carve-out.md)
-
-**Tue — OpenTelemetry on AI workloads**
 - [Why OTel on AI matters](../W05/pre-session/2-Tuesday/2-why-otel-on-ai-matters.md)
 - [Trace propagation — W3C traceparent](../W05/pre-session/2-Tuesday/3-trace-propagation-w3c-traceparent.md)
 - [Span attributes — GenAI semantic conventions](../W05/pre-session/2-Tuesday/4-span-attributes-gen-ai-semconv.md)
 - [OTel instrumentation — Python AI service](../W05/pre-session/2-Tuesday/5-otel-instrumentation-python-ai-service.md)
 - [Cost as an AIOps signal](../W05/pre-session/2-Tuesday/6-cost-as-aiops-signal.md)
 - [Drift detection — agentic systems](../W05/pre-session/2-Tuesday/7-drift-detection-agentic-systems.md)
-
-**Wed — AIOps governance + HITL #7 + research slot**
 - [HITL #7 — auto-remediation authority](../W05/pre-session/3-Wednesday/2-hitl-7-auto-remediation-authority.md)
 - [AI-SRE pattern walkthrough](../W05/pre-session/3-Wednesday/3-ai-sre-pattern-walkthrough.md)
 - [AIOps constraints — reversibility & blast radius](../W05/pre-session/3-Wednesday/4-aiops-constraints-reversibility-blast-radius.md)
@@ -54,8 +47,6 @@ C1 tested AI fundamentals. C2 tested agentic topology. C3 tested SDLC discipline
 - [Research-day mechanics](../W05/pre-session/3-Wednesday/6-research-day-mechanics.md)
 - [AIOps governance ADR template](../W05/pre-session/3-Wednesday/7-aiops-governance-adr-template.md)
 - [Load-bearing Fri PR — Wed commits](../W05/pre-session/3-Wednesday/8-load-bearing-fri-pr-wed-commits.md)
-
-**Thu — AIOps platform comparison + AWS managed-service onboarding**
 - [AIOps platform compare-matrix workshop](../W05/pre-session/4-Thursday/2-aiops-platform-compare-matrix-workshop.md)
 - [Bedrock Knowledge Bases migration](../W05/pre-session/4-Thursday/3-bedrock-knowledge-bases-migration.md)
 - [Agents-for-Bedrock migration](../W05/pre-session/4-Thursday/4-agents-for-bedrock-migration.md)
@@ -63,10 +54,6 @@ C1 tested AI fundamentals. C2 tested agentic topology. C3 tested SDLC discipline
 - [Drift-monitoring policy](../W05/pre-session/4-Thursday/6-drift-monitoring-policy.md)
 - [Human-oversight escalation workflows](../W05/pre-session/4-Thursday/7-human-oversight-escalation-workflows.md)
 - [Deployment planning — incident-response runbook](../W05/pre-session/4-Thursday/8-deployment-planning-incident-response-runbook.md)
-
-**Fri — Final Adversarial Review PR** (replaces standard war-room; same day as this checkpoint)
-
-- W5 war-room incidents — `W05/war-room/`.
 
 ### Cross-cutting
 

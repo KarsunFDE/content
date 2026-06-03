@@ -69,7 +69,7 @@ You'll get a per-checkpoint composite verdict: **meets / partial / below**. Per-
 - The actual audit questions
 - Answer keys
 
-Example scenarios in each brief are **deliberately distinct** from the curriculum's war-room incidents. Use them to test your opening, not as a study bank.
+Example scenarios in each brief are **deliberately distinct** from anything you've already worked in the curriculum. Use them to test your opening, not as a study bank.
 
 ## Refresh cadence
 

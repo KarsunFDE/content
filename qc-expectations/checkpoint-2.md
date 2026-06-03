@@ -27,27 +27,20 @@ If you can defend *where* the HITL gate sits in your pair's agent graph + *why t
 
 ## Topics in scope
 
-Everything in `W03/pre-session/` + war-room incidents + your pair's W3 ADRs. The PLAN file shape:
+Everything in `W03/pre-session/` + your pair's W3 ADRs.
 
-- [W3 PLAN — week shape](../W03/PLAN.md)
-
-**Mon — agentic framing + ADR set**
 - [Stakeholder demand framing & the irreversibility principle](../W03/pre-session/1-Monday/2-stakeholder-demand-framing-and-the-irreversibility-principle.md)
 - [Agents are state machines with HITL nodes](../W03/pre-session/1-Monday/3-agents-are-state-machines-with-hitl-nodes.md)
 - [Memory patterns — thread vs cross-thread vs shared](../W03/pre-session/1-Monday/4-memory-patterns-thread-vs-cross-thread-vs-shared.md)
 - [Eval-driven agent development](../W03/pre-session/1-Monday/5-eval-driven-agent-development.md)
 - [Iterative spec-driven dev & §0 retro discipline](../W03/pre-session/1-Monday/6-iterative-spec-driven-dev-and-section-zero-retro-discipline.md)
 - [HITL #3 — interrupt-node boundaries (ADR)](../W03/pre-session/1-Monday/7-hitl-interrupt-node-boundaries-adr.md)
-
-**Tue — ReAct workflows + single-agent intake-triage**
 - [ReAct loop — reason / act / observe](../W03/pre-session/2-Tuesday/2-react-loop-reason-act-observe.md)
 - [Tool-calling discipline — Bedrock Claude tool use](../W03/pre-session/2-Tuesday/3-tool-calling-discipline-bedrock-claude-tool-use.md)
 - [Idempotency for state-mutating tools](../W03/pre-session/2-Tuesday/4-idempotency-for-state-mutating-tools.md)
 - [In-context memory & compaction](../W03/pre-session/2-Tuesday/5-in-context-memory-and-compaction.md)
 - [Agentic RAG patterns — self-querying / multi-query fusion / CRAG](../W03/pre-session/2-Tuesday/6-agentic-rag-patterns-self-querying-multi-query-fusion-crag.md)
 - [LangSmith tracing & observability](../W03/pre-session/2-Tuesday/7-langsmith-tracing-observability.md)
-
-**Wed — multi-agent patterns + KG/CG thinking**
 - [Supervisor-worker — the default multi-agent shape](../W03/pre-session/3-Wednesday/2-supervisor-worker-default-multi-agent-shape.md)
 - [Hierarchical orchestration & parallel fan-out](../W03/pre-session/3-Wednesday/3-hierarchical-orchestration-parallel-fan-out.md)
 - [Multi-agent anti-patterns](../W03/pre-session/3-Wednesday/4-multi-agent-anti-patterns.md)
@@ -55,8 +48,6 @@ Everything in `W03/pre-session/` + war-room incidents + your pair's W3 ADRs. The
 - [Advanced memory patterns — multi-agent](../W03/pre-session/3-Wednesday/6-advanced-memory-patterns-multi-agent.md)
 - [KG/CG scaffold orchestrator](../W03/pre-session/3-Wednesday/7-kg-cg-scaffold-orchestrator.md)
 - [Research discipline — scenario alternatives](../W03/pre-session/3-Wednesday/8-research-discipline-scenario-alternatives.md)
-
-**Thu — state machines + LangGraph HITL deep-dive**
 - [State schema design — graph state as contract](../W03/pre-session/4-Thursday/2-state-schema-design-graph-state-as-contract.md)
 - [Parallel execution — fan-out / fan-in](../W03/pre-session/4-Thursday/3-parallel-execution-fan-out-fan-in.md)
 - [Checkpointing & persistence — MemorySaver vs PostgresSaver](../W03/pre-session/4-Thursday/4-checkpointing-persistence-memorysaver-vs-postgressaver.md)
@@ -64,12 +55,8 @@ Everything in `W03/pre-session/` + war-room incidents + your pair's W3 ADRs. The
 - [HITL #5 — hard interrupt, FAR 15.308 audit row](../W03/pre-session/4-Thursday/6-hitl-5-hard-interrupt-far-15308-audit-row.md)
 - [Workflow resiliency & debugging with LangSmith](../W03/pre-session/4-Thursday/7-workflow-resiliency-debugging-with-langsmith.md)
 - [Cost / latency per-node instrumentation](../W03/pre-session/4-Thursday/8-cost-latency-per-node-instrumentation.md)
-
-**Fri — Phase 1 Defense (no normal pre-session)**
 - [W4 modernization arc preview](../W03/pre-session/5-Friday/2-w4-modernization-arc-preview.md)
 - [Defense anti-patterns to avoid](../W03/pre-session/5-Friday/3-defense-anti-patterns-to-avoid.md)
-
-- W3 war-room incidents (Mon→Thu) — `W03/war-room/`. Mon is Plan Day mode; Tue/Wed/Thu are incident-mode.
 
 ### Cross-cutting
 
@@ -162,7 +149,7 @@ Common stuck points:
 
 1. **Re-walk your pair's W3 ADR set** — the three required ADRs (single-vs-multi-agent split, LangGraph framework defence, HITL #3 interrupt-node boundaries). Know what you chose AND what you considered AND why
 2. **Sketch your agent graph from memory** — if you can't draw the nodes + edges + interrupt placements without looking, fix that today. Auditors often hand you the whiteboard
-3. **Read the [W3 PLAN](../W03/PLAN.md)** end-to-end + at least one war-room you didn't run yourself. Your pair worked one variant; the auditor may anchor on a different one
+3. **Re-read the W3 pre-session readings** end-to-end, including the scenario variants your pair didn't work. Your pair worked one variant; the auditor may anchor on a different one
 4. **Review FAR 15.206 + FAR 15.308 in plain English** — you don't need to cite section numbers from memory, but you should know which acquisition acts cannot be delegated and which require CO approval. Your domain-knowledge repo has the references
 5. **Run the LangGraph interrupt → resume pattern** once locally if you didn't already. The "can my graph survive a crash" question is the C2 equivalent of last checkpoint's "can your RAG survive a vendor lookup miss"
 
