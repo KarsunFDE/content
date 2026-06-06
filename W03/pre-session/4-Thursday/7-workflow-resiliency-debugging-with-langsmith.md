@@ -18,116 +18,85 @@ sources:
   - url: https://docs.langchain.com/oss/python/langgraph/interrupts
     retrieved_on: 2026-05-26
     recency_category: hot-tech
-last_verified: 2026-05-26
+last_verified: 2026-06-06
 ---
 
 # Workflow resiliency + debugging LangGraph with LangSmith
 
+> [!NOTE]
+> **From earlier:** Tue's observability topic introduced tracing individual tool calls. Today the trace spans a multi-hour interrupt gap — the LangSmith timeline shows the pause and the resume as a single thread. That visual is your Friday defense evidence.
+
 ## 1. Learning Objectives
 
-By the end of this reading, the learner can:
+By the end of this reading, you can:
 
 - Explain LangGraph's fault-tolerance model: what survives a node failure, what survives a process restart, and what re-runs on resume.
-- Distinguish "transient failure" (retry-friendly) from "logical failure" (state-fixup required) and design node-level retry policies accordingly.
-- Use LangSmith's project/trace/run/thread hierarchy to debug a multi-step workflow and find the failing step.
-- Identify which operations must be wrapped in `task` boundaries to keep replay deterministic.
-- Read a LangSmith trace that crosses an interrupt and explain what the gap between the last pre-interrupt run and the resume run means.
+- Distinguish transient failures (retry-friendly) from logical failures (state-fixup required) and configure per-node retry policies accordingly.
+- Use LangSmith's project / trace / thread / run hierarchy to locate the failing step in a multi-step workflow.
+- Identify which operations require `task` wrappers to stay replay-safe.
+- Read a LangSmith trace that crosses an interrupt and explain what the gap means.
 
 ## 2. Introduction
 
-Every workflow system has a story for "what happens when something goes wrong" — and the quality of that story is a big part of what separates frameworks you can deploy from frameworks you wish you could deploy. The default answer in plain Python is *bad*: a half-finished workflow that crashed leaves state somewhere, no one knows where, and you find out about it when a downstream system notices a missing record. The minimum viable better answer is durable state plus structured tracing: persisted progress so resumption is possible, and observable history so debugging is possible.
+Plain Python's default answer to "what goes wrong" is bad: a half-finished workflow leaves state somewhere, discovered when a downstream system notices a missing record. The minimum viable improvement is durable state plus structured tracing: persisted progress so resumption is possible, observable history so debugging is possible.
 
-LangGraph and LangSmith together provide that minimum viable better answer for graph-shaped LLM workflows. LangGraph's persistence layer ensures fault tolerance — a node failure does not lose the work of its siblings, and a process restart does not lose the work of completed super-steps. LangSmith provides the observability — every node, every LLM call, every retrieval shows up as a structured run inside a trace, with the metadata you need to figure out what went wrong without reproducing the bug locally.
+LangGraph keeps the workflow alive across failures; LangSmith makes them legible. The resiliency story for "Bedrock 429'd at evaluator step 3, we resumed" is only credible if the trace shows the retry and the resume — Friday's defense requires those screenshots.
 
-The two complement each other. Persistence keeps the workflow alive across failures; tracing makes the failures legible. Today's wiring against the real graph leans on both — the resiliency story for "Bedrock 429'd at step 4, we resumed and finished step 5" is only credible if the trace shows the retry and the resume both fired.
+> [!IMPORTANT]
+> **LangSmith is preview integration today (D-031).** Deep eval workflows — RAGAS, judge-model scoring — are W5 material. Today: wire the trace, capture the interrupt-gap visual, confirm token-per-node metadata appears. Do not build eval pipelines yet.
 
 ## 3. Core Concepts
 
-### Fault tolerance at the super-step boundary
+### 3.1 Fault tolerance at the super-step boundary
 
-LangGraph's persistence layer writes a checkpoint at the end of each super-step ([source: docs.langchain.com persistence, retrieved 2026-05-26](https://docs.langchain.com/oss/python/langgraph/persistence)). The key resilience property follows from this: **when a node fails mid-execution, LangGraph stores pending checkpoint writes from any other nodes that completed successfully at that super-step.** When you resume, the successful nodes are not re-run.
-
-In a fan-out scenario, this is load-bearing. If you fan out to four parallel workers and worker B raises, the checkpoint persists workers A, C, and D's results. Resume re-runs only worker B. Without this, a single flaky branch would force you to redo all four — at LLM-call prices, that adds up quickly.
-
-The resume path:
+LangGraph checkpoints at the end of each super-step ([source: docs.langchain.com persistence, retrieved 2026-05-26](https://docs.langchain.com/oss/python/langgraph/persistence)). When a node fails, successful nodes' pending writes from the same super-step are persisted. Resume re-runs only the failed branch — pass `None` as input to read state from the checkpointer and continue.
 
 ```python
-# Initial invocation hit a node failure.
 try:
-    graph.invoke(payload, config={"configurable": {"thread_id": "ticket-42"}})
+    graph.invoke(payload, config={"configurable": {"thread_id": "eval:4711"}})
 except SomeError:
     pass
-
-# Resume from the same thread — picks up where it left off.
-graph.invoke(None, config={"configurable": {"thread_id": "ticket-42"}})
+# Resume — picks up from last good checkpoint.
+graph.invoke(None, config={"configurable": {"thread_id": "eval:4711"}})
 ```
 
-Passing `None` as input on resume tells the runtime to read state from the checkpointer and continue.
+At LLM-call prices, not re-running successful evaluator branches matters.
 
-### Determinism and consistent replay
+### 3.2 Determinism and the `task` boundary
 
-When a workflow resumes, the code does *not* pick up at the exact line where it stopped; it resumes from the most recent appropriate checkpoint and replays from there ([source: docs.langchain.com durable-execution, retrieved 2026-05-26](https://docs.langchain.com/oss/python/langgraph/durable-execution)). This has a critical implication: **anything inside the node that ran before the failure will run again on resume.**
+When a workflow resumes, it replays from the most recent super-step checkpoint ([source: docs.langchain.com durable-execution, retrieved 2026-05-26](https://docs.langchain.com/oss/python/langgraph/durable-execution)). **Any code that ran before the failure inside the node re-runs on resume.**
 
-If your node makes an external API call and then crashes, the API call will be re-issued on replay. For an idempotent call (a `GET`) this is fine. For a non-idempotent call (a payment capture, a model invocation that bills you, a `POST` that creates a record), it is not.
-
-The fix is to wrap non-deterministic and side-effectful operations inside `task` boundaries. The framework records the task's result on first run; on replay it reads the recorded result instead of re-executing:
+For idempotent operations (a `GET`) this is fine. For non-idempotent operations (a Bedrock call, a `POST`), it causes double-execution. The fix: wrap in `task` boundaries — result recorded on first run, replayed from record on resume.
 
 ```python
 from langgraph.func import task
 
 @task
-def capture_payment(intent_id: str) -> dict:
-    return stripe.capture(intent_id)   # the side effect
+def score_proposal(proposal_id: str, criteria: dict) -> dict:
+    return bedrock_client.invoke_model(...)
 
-def payment_node(state):
-    result = capture_payment(state["intent_id"]).result()   # recorded on first run
-    return {"capture": result}
+def evaluator_node(state: EvaluationState) -> dict:
+    result = score_proposal(state["proposal_id"], state["criteria"]).result()
+    return {"evaluator_scores": {state["proposal_id"]: result}}
 ```
 
-The same pattern applies to LLM calls that you do not want billed twice on resume.
+> [!TIP]
+> **If the operation has a cost or a side-effect, wrap it in `@task`.** GET requests that are cheap and idempotent can skip the wrapper; Bedrock calls and database writes cannot.
 
-### Retry policies — transient vs logical failures
+### 3.3 Transient vs logical failures + LangSmith hierarchy
 
-Two failure shapes need different handling:
+| Failure type | Example | Right response |
+|---|---|---|
+| Transient | Bedrock 429, network blip | Retry with backoff |
+| Logical | LLM output fails validation, 4xx malformed input | Surface to human; retry won't help |
 
-- **Transient failures** — rate limits (429), brief network errors, ephemeral upstream blips. The right move is retry with backoff. LangGraph supports per-node retry configuration via `retry` policies on `add_node`, with parameters for max attempts, initial interval, multiplier, and which exception types are retryable.
-- **Logical failures** — the LLM produced output that fails validation, the downstream API returned a 4xx because the input was malformed, the state is genuinely wrong. Retry will not help. The right move is to surface the failure for human inspection — possibly via an interrupt — and either fix the state and resume, or roll back to an earlier checkpoint.
+Configure per-node retry via `retry` on `add_node`: `max_attempts`, `retry_on` (exception types), backoff. Retry-looping a logical failure wastes calls and delays diagnosis.
 
-Classifying a failure into one bucket or the other is the engineer's job. The framework gives you the levers; the discipline is to not retry-loop your way through what is actually a state bug.
-
-### LangSmith's hierarchy: project / trace / thread / run
-
-LangSmith organises observability into four levels ([source: docs.smith.langchain.com observability concepts, retrieved 2026-05-26](https://docs.smith.langchain.com/observability/concepts)):
-
-- **Project** — a container for all traces from a single application or service.
-- **Trace** — the sequence of runs for a single operation (one workflow invocation; one user request).
-- **Thread** — multiple traces grouped by a shared `session_id`/`thread_id`/`conversation_id` metadata key. Used to view a multi-turn or multi-day workflow as a single sequence.
-- **Run** — a single unit of work inside a trace. One LLM call is a run; one node is a run; one tool call is a run. If you are familiar with OpenTelemetry, a run is a span.
-
-The thread level is what makes a multi-day workflow legible. A single workflow that fires once, interrupts for 18 hours, then resumes will show up as two traces in the same thread — the gap between them is visible in the timeline. Without the thread grouping, the two traces look unrelated.
-
-### Tracing a workflow that crosses an interrupt
-
-When a graph hits an interrupt, the trace pauses at the interrupt node ([source: docs.langchain.com interrupts, retrieved 2026-05-26](https://docs.langchain.com/oss/python/langgraph/interrupts)). The trace itself stays open in LangSmith but no new runs accumulate until the resume fires. When the resume happens via `Command(resume=...)`, a new run appears in the trace timeline with the time gap visible.
-
-This visual is the single most useful artifact in a defense or review: it shows that the system *did* pause for the human and *did* wait, in real time, for as long as the human took. A reviewer who asks "did the system really wait, or did it auto-approve?" can be answered by pointing at the timeline.
-
-To make this work end-to-end, ensure that the resume invocation reuses the same `thread_id` *and* attaches the same metadata as the initial invocation. The `session_id`/`thread_id`/`conversation_id` metadata key is what makes LangSmith group the two traces into one thread.
-
-### What to instrument on every node
-
-Treat each node as a span and attach the metadata that makes the trace useful in retrospect:
-
-- **Inputs and outputs** — what the node read and wrote. LangSmith captures this automatically when you use the `@traceable` decorator or the LangChain/LangGraph instrumentation.
-- **Latency** — wall-clock time. Already captured by LangSmith.
-- **Token counts** — for LLM calls. Use the OpenTelemetry GenAI semantic-convention attribute names where possible (`gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`).
-- **Correlation identifier** — a stable ID that threads through every cross-service hop, so the workflow's trace can be joined to the upstream HTTP request and downstream service calls.
-
-The minimum bar for production: any failure should be diagnosable from the trace alone, without re-running the workflow locally.
+LangSmith has four levels ([source: docs.smith.langchain.com observability concepts, retrieved 2026-05-26](https://docs.smith.langchain.com/observability/concepts)): **Project** → **Trace** → **Thread** (traces sharing a `thread_id`) → **Run**. When the graph hits an interrupt the trace pauses; on `Command(resume=...)` a new run appears with the gap visible ([source: docs.langchain.com interrupts, retrieved 2026-05-26](https://docs.langchain.com/oss/python/langgraph/interrupts)). **That gap visual is Friday's defense evidence.** Reuse the same `thread_id` on resume so LangSmith groups both invocations into one thread.
 
 ## 4. Generic Implementation
 
-A non-Karsun example: a generic data-enrichment pipeline that calls three external APIs in sequence (geocoding, demographics, sentiment), with retries on transient failures and tracing throughout.
+Data-enrichment pipeline with retry and `task` wrappers:
 
 ```python
 from langgraph.graph import StateGraph, START, END
@@ -143,10 +112,9 @@ class EnrichState(TypedDict):
     demographics: dict | None
     sentiment: dict | None
 
-# Wrap each external call in a task so a resume does not re-issue it.
 @task
 def call_geocode(address: str) -> dict:
-    return geocode_api.lookup(address)   # external API; non-deterministic
+    return geocode_api.lookup(address)
 
 @task
 def call_demographics(coords: dict) -> dict:
@@ -171,68 +139,75 @@ builder.add_node(
 )
 builder.add_edge(START, "enrich")
 builder.add_edge("enrich", END)
-
 app = builder.compile(checkpointer=PostgresSaver(...))
-
-# Each invocation is one trace; thread_id groups them.
-config = {"configurable": {"thread_id": f"enrich:{record_id}"}}
-app.invoke({"record_id": record_id, "address": "..."}, config=config)
 ```
 
-What this gives you:
-
-- **If `call_demographics` 429s** — the retry policy on the node retries up to three times with exponential backoff. The earlier `call_geocode` task's result is already recorded; it does not re-run.
-- **If the process crashes mid-pipeline** — the next invocation with the same `thread_id` resumes from the last checkpoint. The recorded tasks are read from state; only un-run tasks execute.
-- **If `call_sentiment` returns malformed JSON** — the retry policy probably should not fire (this is a logical failure, not transient). The cleaner shape is to raise a non-retryable exception type and let the graph surface to an interrupt for human inspection.
-- **In LangSmith** — each invocation produces a trace; multiple invocations on the same `thread_id` show up as a thread; each task is a separate run inside its parent node.
-
-The single most important property: when this pipeline misbehaves in production, a developer can open LangSmith, find the trace, and see exactly which task failed and what it returned, without re-running the pipeline against possibly-changed external state.
+If `call_demographics` 429s, the retry policy fires up to three times. `call_geocode`'s result is already recorded — it does not re-run. If `call_sentiment` returns malformed JSON, raise a non-retryable exception and surface to an interrupt.
 
 ## 5. Real-world Patterns
 
-**E-commerce — order-processing sagas (DoorDash, Uber Eats).** Long-running order workflows persist their progress so a worker crash mid-order does not double-charge or double-dispatch. The pattern is structurally identical to LangGraph's super-step + checkpoint: each step is recorded, retries are bounded, and observability captures every transition. Engineering blog posts from the food-delivery space repeatedly emphasise that "every external call is idempotent or recorded" — exactly the `task` wrapper pattern.
+**E-commerce — order sagas.** Long-running food-delivery workflows persist progress so a worker crash does not double-charge or double-dispatch. "Every external call is idempotent or recorded" is the `task` wrapper pattern by another name.
 
-**Fintech — Plaid's transaction-fetch retries.** Plaid maintains long-lived per-account workflows that periodically fetch transactions from upstream banks. When an upstream bank's API is flaky, Plaid's workers retry within a bounded budget and surface persistent failures as a status the consumer can subscribe to. The observable trace of "what we tried, what the bank returned, when we gave up" is a contractually visible artifact — clients use it to debug their own integrations.
+> [!NOTE]
+> **Cross-domain lesson:** Durable execution + structured tracing is the baseline for any workflow that crosses process restarts. The specific framework changes (Temporal, Step Functions, LangGraph); the invariant — persisted state + observable history — does not.
 
-**Logistics — shipment status reconciliation.** Multi-carrier shipping platforms run reconciliation workflows that poll each carrier's tracking API on a schedule, persist the polled state, and reconcile against the merchant's shipping records. The retries-with-backoff and structured-trace patterns are universal; the failure modes that bite teams are non-idempotent retries (issuing a duplicate label) and traces that span too many invocations to navigate (where the thread-id grouping pays off).
-
-**Healthcare — HL7 message-routing engines.** Hospital integration engines route HL7 v2 messages between EHRs, labs, and pharmacies. Each message's journey is persisted and observable: which queue it sat in, which transformations it went through, which downstream system acknowledged. The "everything is replayable from persisted state" property is what makes message-routing engines safely operable; the same property is what LangGraph's checkpointer + LangSmith trace give to LLM workflows.
+**Healthcare — HL7 message routing.** Hospital integration engines persist each message's journey. "Everything is replayable from persisted state" is what makes them safely operable — the same property LangGraph + LangSmith provide for LLM workflows.
 
 ## 6. Best Practices
 
-- **Wrap non-deterministic and side-effectful operations in `task` boundaries.** Replay-safety is the difference between a workflow that survives crashes cleanly and one that double-bills.
-- **Classify failures explicitly: transient vs logical.** Retry only the first; surface the second to a human or to an interrupt.
-- **Set per-node retry policies, not a single graph-wide retry.** Different nodes have different failure profiles.
-- **Use stable `thread_id`s and attach them to LangSmith metadata.** A multi-day workflow is unreadable without thread grouping.
-- **Annotate every node with `@traceable` or rely on the framework's auto-instrumentation.** Implicit traces are still traces; explicit ones are easier to filter.
-- **Capture token-usage metadata using the OpenTelemetry GenAI attribute names.** Standard names make traces portable across observability backends.
-- **Keep node bodies short.** A node that does five things is one trace span with five hidden operations; five smaller nodes are five spans with five visible operations.
+- **Wrap non-deterministic operations in `task` boundaries.**
+- **Classify failures: transient vs logical.** Retry only transient.
+- **Per-node retry policies, not graph-wide.**
+- **Stable `thread_id`s in LangSmith metadata.** Multi-day workflows are unreadable without thread grouping.
+- **Keep node bodies short.** Five smaller nodes = five diagnosable spans.
+
+> [!WARNING]
+> **Anti-pattern: `tracing-as-replacement-for-tests`.** LangSmith traces show what happened, not what should happen. The trace can confirm the interrupt fired and the correct node ran; it cannot assert that the audit row schema is correct or that a careless thread_id change breaks multi-tenant isolation. Wire the traces; also write the tests. Both are on the Friday defense rubric.
 
 ## 7. Hands-on Exercise
 
-**Code task (15 min).** Take a small two-node graph that fetches a URL and then summarises the response. Modify it so that:
+Take a two-node graph (fetch URL → summarise): (1) wrap both calls in `task` boundaries; (2) compile with `PostgresSaver`; (3) retry a simulated `TransientUpstreamError` in the summariser up to three times; (4) after retries exhaust, pause via `interrupt()` for human inspection; (5) confirm the LangSmith trace shows the fetch result once, three retry attempts, and the interrupt gap.
 
-1. The fetch and the summarise calls are each inside a `task`.
-2. The graph compiles with a `PostgresSaver` (or `SqliteSaver` if Postgres is not available locally).
-3. A simulated failure in the summariser raises a custom `TransientUpstreamError`, retried up to three times via the node's retry policy.
-4. After the retries exhaust, the graph pauses (use `interrupt()`) and surfaces the last error for human inspection.
-5. The whole run produces a LangSmith trace where you can see the fetch task's recorded result, the summariser retry attempts, and the interrupt.
+> [!NOTE]
+> **Self-check** (30 s — answer mentally before expanding)
+>
+> 1. You omit `@task` on `call_geocode`. The node crashes after geocode but before demographics. On resume, what happens to the geocode API call?
+> 2. Your LangSmith trace shows two separate traces with an 18-hour gap under different threads. What did you forget?
 
-**What good looks like.** The fetch result appears once in the trace, not three times (because the `task` boundary recorded it). The summariser runs three times. The interrupt is the final run in the trace. On resume with `Command(resume={"ack": True})`, the workflow completes without re-fetching. A weak answer omits the `task` wrappers, so the fetch re-runs on every replay; the trace becomes unreadably noisy.
+<details>
+<summary>Show answers</summary>
+
+1. Without the `@task` wrapper, `call_geocode` is not recorded. On resume the enrichment node replays from the super-step boundary — which means `call_geocode` runs again. You pay for the geocode API call twice, and if the API is not idempotent (or if the result could differ — e.g., the address was updated), you get inconsistent state.
+2. You forgot to pass the same `thread_id` metadata on the resume invocation. LangSmith groups traces into threads by matching that metadata key. If the initial invocation used `thread_id: "eval:4711"` but the resume omitted it or used a different value, LangSmith creates two separate threads and the 18-hour gap is invisible.
+
+</details>
 
 ## 8. Key Takeaways
 
-- When a node in a parallel branch fails, what survives in the checkpoint and what re-runs on resume? (LO1)
-- What is the difference between a transient and a logical failure, and how do I configure each? (LO2)
-- How do project / trace / thread / run nest in LangSmith, and which level groups a multi-day workflow into one view? (LO3)
-- Why does an external API call need to be inside a `task` boundary to be replay-safe? (LO4)
-- What does the gap between the last pre-interrupt run and the resume run in a LangSmith trace tell me? (LO5)
+- Fault tolerance: successful branches' pending writes persist at the super-step checkpoint; only the failed branch re-runs on resume.
+- `task` wrappers make non-deterministic operations replay-safe — recorded on first run, replayed from record on resume.
+- Transient failures → retry with backoff. Logical failures → surface to human.
+- LangSmith thread grouping via shared `thread_id` metadata makes a multi-day workflow appear as one cohesive trace.
 
-## Sources
+## 9. Sources
 
-1. [LangGraph Durable Execution — replay, determinism, task boundaries (v1.x docs)](https://docs.langchain.com/oss/python/langgraph/durable-execution) — retrieved 2026-05-26
-2. [LangGraph Persistence — fault tolerance, pending writes, checkpoint boundaries](https://docs.langchain.com/oss/python/langgraph/persistence) — retrieved 2026-05-26
-3. [LangSmith Observability concepts — projects, traces, threads, runs](https://docs.smith.langchain.com/observability/concepts) — retrieved 2026-05-26
-4. [LangGraph Interrupts — interrupt model, resume contract](https://docs.langchain.com/oss/python/langgraph/interrupts) — retrieved 2026-05-26
+<details>
+<summary>References — retrieved via /web-research per D-046</summary>
 
-Last verified: 2026-05-26
+- https://docs.langchain.com/oss/python/langgraph/durable-execution — retrieved 2026-05-26 — hot-tech
+- https://docs.langchain.com/oss/python/langgraph/persistence — retrieved 2026-05-26 — hot-tech
+- https://docs.smith.langchain.com/observability/concepts — retrieved 2026-05-26 — hot-tech
+- https://docs.langchain.com/oss/python/langgraph/interrupts — retrieved 2026-05-26 — hot-tech
+
+</details>
+
+<details>
+<summary>Deeper dive — for senior FDEs (optional, not in reading budget)</summary>
+
+**Retry policy configuration in depth.** LangGraph's `retry` parameter on `add_node` accepts: `max_attempts` (integer), `retry_on` (list of exception types — only these trigger retries; all others propagate immediately), `backoff` (`"linear"` or `"exponential"`), `initial_interval` (seconds), and `multiplier` (for exponential). A common senior mistake is omitting `retry_on` — if not specified, LangGraph retries on *all* exceptions, including logical failures that will never succeed. Always name the exception types explicitly.
+
+**LangSmith evaluation integration preview (D-031).** The `@traceable` decorator and LangSmith's feedback API allow attaching evaluation scores to individual runs — useful for tracking whether the consensus node's output quality degrades as proposal volume grows. W5's AIOps week builds on this: cost-per-node + quality-score-per-node together are the dual signal for auto-remediation decisions. Wire the tracing foundation today so W5 has something to instrument.
+
+</details>
+
+Last verified: 2026-06-06

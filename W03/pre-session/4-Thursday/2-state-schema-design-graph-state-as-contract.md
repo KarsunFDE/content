@@ -4,7 +4,7 @@ day: Thu
 topic_slug: state-schema-design-graph-state-as-contract
 topic_title: "State schema design — graph state is your contract"
 parent_overview: W03/pre-session/4-Thursday/1-DailyTopicOverview.md
-estimated_minutes: 12
+estimated_minutes: 11
 sources:
   - url: https://docs.langchain.com/oss/python/langgraph/graph-api
     retrieved_on: 2026-05-26
@@ -18,170 +18,176 @@ sources:
   - url: https://docs.langchain.com/oss/python/langgraph/persistence
     retrieved_on: 2026-05-26
     recency_category: hot-tech
-last_verified: 2026-05-26
+last_verified: 2026-06-06
 ---
 
 # State schema design — graph state is your contract
 
+> [!NOTE]
+> **From earlier:** Wed's supervisor-worker pattern passed state between agents implicitly. Today that implicit state becomes an explicit, typed contract — the foundation every node in today's flow depends on.
+
 ## 1. Learning Objectives
 
-By the end of this reading, the learner can:
+By the end of this reading, you can:
 
-- Define a LangGraph state schema using `TypedDict`, `dataclass`, or Pydantic `BaseModel` and explain the trade-offs between the three.
-- Explain why state is the "contract" between nodes — what each node is allowed to read, what it is allowed to write, and what happens when two nodes write the same field concurrently.
-- Identify when a field needs a **reducer** (`Annotated[T, reducer_fn]`) and when last-writer-wins is the correct semantics.
-- Distinguish input schema, output schema, and internal state in graphs where they differ.
-- Recognise the failure modes that follow from a sloppy schema — silent overwrites, parallel-write exceptions, and downstream nodes coupling to "magic" untyped fields.
+- Define a LangGraph state schema with `TypedDict` and explain when `dataclass` or Pydantic is the right upgrade.
+- Explain why state is the contract between nodes — what each node can read and write, what happens on concurrent writes.
+- Identify when a field needs a `reducer` (`Annotated[T, fn]`) versus last-writer-wins semantics.
+- Distinguish input schema, output schema, and internal state, and know when splitting them matters.
 
 ## 2. Introduction
 
-Every multi-step workflow has *some* shared state — even if it is implicit. The variables that flow between steps, the intermediate results one step needs from another, the running tally one step updates while a parallel step reads it. Whether you are building a graph-based agent runtime, a Kafka stream-processor, a data pipeline, or a long-running business workflow in a state machine, the *shape* of that shared state determines what kinds of bugs you can possibly write.
+Every multi-step workflow has shared state — whether it is explicit or not. LangGraph makes it explicit by design: before you add a single node, you define a typed `State` class. Every node receives the full state as its first argument and returns only the fields it changed. The framework merges that partial return into the running state using each field's declared merge semantics.
 
-LangGraph leans into this directly. Before you add a single node, you define the graph's `State` — a typed schema that becomes the input type for every node function and the constraint that every node update is checked against. The schema is not a convenience type for the IDE; it is the load-bearing contract that lets the framework provide parallel execution, time-travel debugging, deterministic replay, and resume-from-checkpoint without each developer having to invent ad-hoc serialisation for their state every time.
+This is not a convenience feature. The schema enables parallel execution, time-travel debugging, deterministic replay, and resume-from-checkpoint. The same principle appears in AWS Step Functions (state object between tasks), Temporal (workflow state), and Kafka Streams (state stores). **An explicit, typed contract narrows the set of bugs you can write.**
 
-The same idea appears across other workflow systems with different names. AWS Step Functions calls it the "state object" passed between tasks. Temporal calls it "workflow state" and enforces determinism rules around what you can store there. Kafka Streams calls it the "state store." The principle is identical: **the workflow's state shape is the contract between its participants, and an explicit, typed contract dramatically narrows the set of bugs you can write.**
-
-This reading is the generic foundation. The day's overview applies it to the specific evaluator → consensus → SSA-review flow you will wire today; here we are after the discipline that travels with you to any future graph-shaped system.
+Today's schema anchors `EvaluationState` — the contract every evaluator node, the consensus aggregator, and the SSA-review hard gate reads and writes.
 
 ## 3. Core Concepts
 
-### Schema choices: `TypedDict` vs `dataclass` vs Pydantic
+### 3.1 Schema options: TypedDict, dataclass, Pydantic
 
-LangGraph supports three schema definitions, each with a clear use-case ([source: docs.langchain.com graph-api, retrieved 2026-05-26](https://docs.langchain.com/oss/python/langgraph/graph-api)):
+LangGraph supports three schema styles ([source: docs.langchain.com graph-api, retrieved 2026-05-26](https://docs.langchain.com/oss/python/langgraph/graph-api)):
 
-- **`TypedDict`** — the recommended default. Dict-shaped, zero-overhead at runtime, fully typed for IDEs and static checkers. No default values; you must set every key when you initialise. Best for "fast, typed, no validation."
-- **`dataclass`** — same shape as `TypedDict` but allows default values via `field(default=...)`. Slightly heavier than a dict but still no validation. Use when you want defaults for optional fields.
-- **Pydantic `BaseModel`** — runtime validation, coercion, and recursive checks. Heavier than the other two. Use when state contains complex nested types that you want validated on every node return, not just statically.
+| Style | Runtime overhead | Default values | Validation |
+|-------|:----------------:|:--------------:|:----------:|
+| `TypedDict` | None | No | Static only |
+| `dataclass` | Minimal | Yes (`field(default=...)`) | Static only |
+| Pydantic `BaseModel` | Per-mutation | Yes | Runtime |
 
-The state is the **input schema to every node**: every node function receives the full state as its first argument and returns a dict of *just the fields it updated*. The framework merges that partial return into the running state.
+**Rule of thumb:** start with `TypedDict`. Reach for Pydantic only when you need runtime validation on state mutations — it costs a parse on every node return.
 
-### Reducers — what happens when two nodes write the same field
+### 3.2 Reducers — what happens when two nodes write the same field
 
-By default, two writes to the same field overwrite — the second one wins. That is correct for fields where only one node ever writes (e.g., `ssa_approval_status` is only ever set by the human-resume node). It is *catastrophically wrong* for fields where multiple nodes write concurrently (e.g., a `scores` dict that four parallel evaluator-nodes all need to populate).
+By default, two writes to the same field last-writer-wins. Correct for single-owner fields (`ssa_approval_status`); wrong for any field multiple nodes write concurrently.
 
-The fix is a **reducer**: a function that takes the existing value and the new value and returns the merged result. LangGraph annotates the reducer onto the type:
+The fix: annotate the field with a reducer function. LangGraph calls the reducer to merge the existing value with each new write:
 
 ```python
 from typing import Annotated, TypedDict
 from operator import add
+from langgraph.graph.message import add_messages
 
-class State(TypedDict):
-    # Last-writer-wins (default): only set by one node.
-    status: str
-    # Reducer: each parallel node appends its results to the list.
-    scores: Annotated[list, add]
+class EvaluationState(TypedDict):
+    evaluation_id: str
+    agency_id: str                        # multi-tenant thread-key
+    proposal_ids: list[str]
+    evaluator_scores: Annotated[dict, lambda a, b: {**a, **b}]  # parallel writes merge
+    consensus_complete: bool
+    ssdd_draft: str | None                # snapshotted at consensus — never regenerated
+    ssa_approval_status: str              # "pending" | "approved" | "rejected"
+    audit_correlation_id: str
+    messages: Annotated[list, add_messages]
 ```
 
-The built-in `add` reducer concatenates lists. For dicts you typically write a small merge reducer. For chat-message history, LangGraph ships `add_messages`, which knows how to deduplicate by message ID rather than blindly appending.
+Skip the reducer on `evaluator_scores` and you get one of two failure modes: silent overwrite (only one evaluator's result survives) or a parallel-update exception. Both are nasty because the first run often looks correct.
 
-**The rule of thumb:** any field that more than one node writes needs a reducer. Skip the reducer and you get one of two failure modes — either silent overwrite (the last write wins, the others vanish) or a parallel-update exception at runtime. Both are nasty to debug because the *first* failing run usually looks like it worked.
+> [!TIP]
+> **Declare the reducer at the moment you introduce the field.** Adding one later means migrating every checkpoint in the database — treat it as a schema migration from day one.
 
-### Input schema vs output schema vs internal state
+### 3.3 Input / output / internal schema split
 
-By default the graph's input, internal, and output schemas are the same `State` type. You can split them ([source: docs.langchain.com graph-api, retrieved 2026-05-26](https://docs.langchain.com/oss/python/langgraph/graph-api)):
+By default input, internal, and output schemas are the same type. Splitting matters when the state has many internal fields callers do not need to see or supply. LangGraph supports separate `input_schema` and `output_schema` at `StateGraph(State, input=InputType, output=OutputType)`. Use it when internal state grows beyond ~8 keys — callers should not couple to audit fields they never write.
 
-- **Input schema** — what the *caller* must pass when invoking the graph.
-- **Internal state** — what nodes pass between themselves (often a superset of input, with computed fields).
-- **Output schema** — what the graph returns to the caller.
-
-Splitting them matters when the state has dozens of fields but only three are caller-relevant. Without the split, the caller sees the full internal mess and tends to depend on it.
-
-### Why the schema is "the contract"
-
-A node's type signature is `def my_node(state: State) -> dict`. Two things follow:
-
-1. **What the node can read** — every key in `State`. If a key isn't in the schema, no node can use it. This rules out "let me just stash this here for later" anti-patterns.
-2. **What the node can write** — only the keys it returns. Other keys are untouched. The framework merges the partial return into the running state using the reducer (or last-writer-wins) for each key.
-
-So the schema simultaneously documents the data model, constrains what nodes can mutate, and provides the merge semantics. That is the contract. A graph with a sloppy schema is a graph where the contract is implicit, and an implicit contract is a contract every developer renegotiates in their head when they read the code.
+> [!TIP]
+> **Name fields by who writes them.** `consensus_complete` is clearer than `complete`; `ssa_approval_status` is clearer than `status`. The name carries ownership — a new engineer can grep for `"ssa_approval_status":` in node return values and immediately know which node owns it.
 
 ## 4. Generic Implementation
 
-A non-Karsun example: an e-commerce order-fulfilment workflow. The state shape declares what every step in the order pipeline reads and writes:
+E-commerce order-fulfilment — same schema discipline outside federal-acq:
 
 ```python
 from typing import Annotated, TypedDict
 from operator import add
 
 def merge_dict(left: dict, right: dict) -> dict:
-    """Reducer for parallel writes to a dict field."""
     return {**left, **right}
 
 class OrderFulfilmentState(TypedDict):
-    # Set once by the caller; never re-written.
+    # Set once by caller — never re-written (no reducer needed).
     order_id: str
     customer_id: str
 
-    # Written by a single node each. Default last-writer-wins is fine.
+    # Single-writer status fields — last-writer-wins is correct.
     payment_status: str          # "pending" | "authorized" | "captured" | "failed"
     inventory_status: str        # "reserved" | "out_of_stock"
     fulfilment_status: str       # "pending" | "shipped" | "delivered"
 
-    # Written by multiple parallel nodes (one per warehouse). Needs a reducer.
+    # Multiple parallel warehouse nodes write here — reducer required.
     warehouse_responses: Annotated[dict, merge_dict]
 
-    # Append-only audit trail. Each step appends one entry. Needs a reducer.
+    # Every node appends one audit entry — reducer required.
     events: Annotated[list, add]
 ```
 
-Reading this declaration tells you everything about the workflow's shape without looking at a single node:
-
-- The caller supplies `order_id` + `customer_id` — those are inputs, never touched again.
-- Three single-writer status fields — clean ownership, no reducer needed.
-- Two multi-writer fields — `warehouse_responses` for parallel warehouse-availability checks, `events` for an audit log that every step appends to.
-
-A new engineer can answer "where does `payment_status` get set?" by grepping the codebase for `"payment_status":` in node return values. That grep is only useful because the schema constrains *every* write to go through a typed return. Without the schema you'd have to read every node body.
+Reading this declaration tells you the workflow's shape without opening a single node body: two input-only keys, three single-writer status keys, two multi-writer keys needing reducers. A new engineer auditing "who writes `payment_status`?" greps node returns — that grep is only useful because the schema constrains every write through a typed return.
 
 ## 5. Real-world Patterns
 
-**Fintech — payment-processing state machines (Stripe).** Stripe's PaymentIntent object is, in effect, a typed state schema for the multi-step payment flow. Fields like `status`, `next_action`, and `last_payment_error` are written by specific transitions; integrators code against the published schema and the documented state diagram. When a competitor's gateway publishes "the response object varies depending on the path through the flow," integrators end up writing fragile defensive parsing. Typed state is the difference between integration code that survives upgrades and code that breaks on every API revision.
+**Fintech — Stripe PaymentIntent.** Stripe's `PaymentIntent` is a typed schema for the multi-step payment flow. Integrators code against the published field set; "the response varies by path" forces fragile defensive parsing. Typed state is the difference.
 
-**Healthcare — HL7 FHIR workflow tasks.** FHIR's `Task` resource defines a typed schema for clinical workflow steps — `status`, `intent`, `for`, `owner`, `input`, `output`. When an order-entry system hands a task to an imaging system, both sides validate against the FHIR schema. Multiple downstream systems can read the same task without coordinating; each only writes the fields it owns. The schema is the contract that lets two vendors' systems collaborate on the same patient encounter without a shared codebase.
+> [!NOTE]
+> **Cross-domain lesson:** Every long-running multi-step workflow — payment, clinical task, order saga — uses an explicit typed schema as its participant contract. The pattern predates LangGraph; LangGraph just applies it to LLM nodes.
 
-**E-commerce — Shopify Flow / order tagging.** Shopify's Flow automation builds workflows where each step reads from the order object and writes back named tags or metafields. Because the metafield namespace is typed and versioned, two unrelated automations can append tags to the same order without stepping on each other. Without that namespacing, merchants would see automations randomly clobber each other's writes — the same failure mode parallel LangGraph nodes have without reducers.
-
-**Logistics — AWS Step Functions for parcel routing.** Step Functions executions pass a JSON state object between tasks. Best-practice AWS guidance is to define the JSON schema up front and validate it at task boundaries, because once you have parallel branches (the `Parallel` state) you need explicit merge logic in the same shape as a LangGraph reducer. Teams that skip the schema discipline discover, weeks in, that two parallel branches both write to `result` and one is silently lost.
+**Healthcare — HL7 FHIR Task.** FHIR's `Task` resource defines a typed schema for clinical workflow steps: `status`, `intent`, `owner`, `input`, `output`. Two vendors collaborate on the same encounter without a shared codebase because the schema is the contract.
 
 ## 6. Best Practices
 
-- **Start with `TypedDict`; only reach for Pydantic when you genuinely need runtime validation.** Pydantic is heavier on every state mutation; for most graphs the type-checker is enough.
-- **Name fields by *who writes them*, not by *what they are*.** `consensus_complete` is clearer than `complete`. `ssa_approval_status` is clearer than `status`. The name carries the ownership.
-- **Annotate every multi-writer field with a reducer at the moment you introduce it.** Adding a reducer later means migrating every checkpoint already in the database.
-- **Keep the schema flat where possible.** Deeply nested state is hard to merge with reducers and hard to read in a debugger. Prefer separate top-level keys over a single nested dict.
-- **Split input/output schemas when the internal state has more than ~8 keys.** Callers do not need to see the audit trail you keep internally.
-- **Treat schema changes as breaking changes.** Existing checkpoints in your persistence layer were written against the old shape. Either migrate or version the schema.
-- **Document each field with a one-line comment naming the writer node(s).** The schema is the contract; a contract without annotation is a contract no one reads.
+- **Start with `TypedDict`; reach for Pydantic only when runtime validation is genuinely needed.**
+- **Annotate every multi-writer field with a reducer the moment you introduce it.** Adding one later means migrating every checkpoint already in the database.
+- **Keep the schema flat where possible.** Deeply nested state is hard to merge with reducers and hard to read in a debugger.
+- **Split input/output schemas when internal state has more than ~8 keys.**
+- **Treat schema changes as breaking changes.** Existing checkpoints were written against the old shape.
+
+> [!WARNING]
+> **Anti-pattern: `state-as-untyped-dict`.** Using a plain `dict` as graph state (no `TypedDict`, no reducers) compiles and runs — until a parallel branch silently overwrites another's write and the bug appears hours later in production data. An untyped dict is an implicit contract that every developer renegotiates in their head when they read the code. Define the schema first; it is cheaper than debugging silent overwrites at 02:00.
 
 ## 7. Hands-on Exercise
 
-**Whiteboarding exercise (15 min).** Design the state schema for a generic "expense-report approval" workflow. The workflow has these steps:
+Design the `TypedDict` state schema for an "expense-report approval" workflow: `submit` → `categorise` (three parallel classifiers) → `manager_review` → `finance_check` → `pay`. For every field: name the writer node(s), decide if a reducer is needed, and identify which fields belong in the input schema only.
 
-1. `submit` — employee submits a report (sets `report_id`, `submitter_id`, `line_items`).
-2. `categorise` — three parallel category-classifier nodes each tag the report with a category proposal.
-3. `manager_review` — manager reviews and either approves or rejects.
-4. `finance_check` — finance system validates against the budget.
-5. `pay` — payment system disburses (or marks rejected).
+> [!NOTE]
+> **Self-check** (30 s — answer mentally before expanding)
+>
+> 1. The `categorise` step has three parallel nodes each writing a category proposal. What happens if you forget the reducer?
+> 2. `manager_decision` is written by exactly one node. Does it need a reducer?
 
-Draw the `TypedDict` declaration. For every field:
-- Name its writer node(s).
-- Decide whether it needs a reducer; justify the choice.
-- Identify any field that could be moved out of the input schema (caller doesn't need to set it).
+<details>
+<summary>Show answers</summary>
 
-**What good looks like.** A clean answer has: `report_id`/`submitter_id`/`line_items` in the input schema only; an `Annotated[dict, merge_dict]` field for the three parallel categorisers' proposals; a single-writer `manager_decision` field (no reducer); a single-writer `finance_validation` field; a single-writer `payment_status` field; and an `Annotated[list, add]` `events` audit trail that every node appends to. A weak answer either misses the reducer on the parallel writes, lumps everything into one input schema, or invents fields that no node actually owns.
+1. Last-writer-wins: only one of the three proposals survives, silently. The other two are lost with no error. The run appears to work until you notice the final category is always from the same classifier.
+2. No. Last-writer-wins is correct for single-owner fields — adding a reducer would be unnecessary complexity with no benefit.
+
+</details>
 
 ## 8. Key Takeaways
 
-- What is the difference between `TypedDict`, `dataclass`, and `BaseModel` as graph state, and when do I pick each? (LO1)
-- Why is the state schema "the contract" between nodes, and what does that constraint *give* me as a framework user? (LO2)
-- When does a field need a reducer, and what are the two failure modes when I forget? (LO3)
-- When is splitting input/output schemas worth the extra type definitions? (LO4)
-- What bugs does an implicit, untyped shared state make easy to write, that an explicit schema makes hard? (LO5)
+- `TypedDict` is the recommended default; `dataclass` adds defaults; Pydantic adds runtime validation — pick the lightest option that meets your needs.
+- State is the contract: constrains what nodes can read and write, provides merge semantics, documents the data model in one place.
+- Every multi-writer field needs a reducer; skip it and you get silent overwrite or runtime exceptions.
+- Splitting input/output schemas keeps callers decoupled from internal audit state.
 
-## Sources
+## 9. Sources
 
-1. [LangGraph Graph API — State, Schemas, Reducers (v1.x docs)](https://docs.langchain.com/oss/python/langgraph/graph-api) — retrieved 2026-05-26
-2. [LangGraph low-level concepts — Graphs, StateGraph, message-passing model](https://langchain-ai.github.io/langgraph/concepts/low_level/) — retrieved 2026-05-26
-3. [Python typing module — `TypedDict`, `Annotated`](https://docs.python.org/3/library/typing.html) — retrieved 2026-05-26
-4. [LangGraph Persistence — checkpoints, threads, super-steps](https://docs.langchain.com/oss/python/langgraph/persistence) — retrieved 2026-05-26
+<details>
+<summary>References — retrieved via /web-research per D-046</summary>
 
-Last verified: 2026-05-26
+- https://docs.langchain.com/oss/python/langgraph/graph-api — retrieved 2026-05-26 — hot-tech
+- https://langchain-ai.github.io/langgraph/concepts/low_level/ — retrieved 2026-05-26 — hot-tech
+- https://docs.python.org/3/library/typing.html — retrieved 2026-05-26 — foundation-stable
+- https://docs.langchain.com/oss/python/langgraph/persistence — retrieved 2026-05-26 — hot-tech
+
+</details>
+
+<details>
+<summary>Deeper dive — for senior FDEs (optional, not in reading budget)</summary>
+
+**Schema evolution and checkpoint migration.** When you change a `TypedDict` field name or add a reducer to an existing field, every checkpoint in your persistence layer was written against the old shape. LangGraph will attempt to deserialise the old checkpoint against the new schema — added fields get `None`, removed fields are dropped, but changed reducer semantics produce subtle bugs: old checkpoints that were last-writer-wins will not be retroactively merged.
+
+Production strategy: version the schema. Name the new `StateV2` distinctly, migrate existing threads explicitly, run both schemas in parallel during migration. The same pattern applies to Temporal workflow versioning and Kafka consumer-group schema evolution. The lesson: treat the checkpoint schema with the same care as a database migration — because it is one.
+
+**Input/output schema granularity.** LangGraph's `input_schema` and `output_schema` can be separate Pydantic models or `TypedDict`s. A common senior-FDE move is to define a thin `InputState` with just the caller-supplied fields, keep the full internal schema for node-to-node passing, and define a thin `OutputState` with just the caller-relevant result. This prevents callers from accidentally coupling to fields like `audit_correlation_id` that are internal bookkeeping.
+
+</details>
+
+Last verified: 2026-06-06

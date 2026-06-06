@@ -18,113 +18,96 @@ sources:
   - url: https://langchain-ai.github.io/langgraph/concepts/low_level/
     retrieved_on: 2026-05-26
     recency_category: hot-tech
-last_verified: 2026-05-26
+last_verified: 2026-06-06
 ---
 
 # Soft vs hard interrupts — name them, audit them differently
 
+> [!NOTE]
+> **From earlier:** Wed's HITL #4 was a *soft* interrupt — the supervisor proposed the next worker; the SSA approved or edited. Today the hard pattern lands: no proposal, no default, no auto-proceed. Same framework call; different contract.
+
 ## 1. Learning Objectives
 
-By the end of this reading, the learner can:
+By the end of this reading, you can:
 
-- Define a "soft interrupt" (suggested default action, human can approve/edit/reject) and a "hard interrupt" (no default, graph blocks indefinitely until human input).
-- Choose between `interrupt_before` (static breakpoint) and the dynamic `interrupt()` function based on whether the gate is structural or conditional.
-- Resume a paused graph using `Command(resume=...)` and explain why the resume payload becomes the return value of `interrupt()` inside the node.
-- Describe the auditing shape that distinguishes soft and hard resumes (what fields go on the audit row, what they mean).
-- Explain why auto-timeout on a hard interrupt is a contract violation, regardless of how convenient it would be.
+- Define soft interrupt (suggested default, human can approve/edit/reject) and hard interrupt (no default, graph blocks indefinitely).
+- Choose between `interrupt_before` (static breakpoint) and dynamic `interrupt()` based on whether the gate is structural or conditional.
+- Resume a paused graph with `Command(resume=...)` and explain what that value becomes inside the node.
+- Describe the audit-row fields that distinguish a soft resume from a hard resume.
+- Explain why auto-timeout on a hard interrupt is a contract violation.
 
 ## 2. Introduction
 
-"Pause and let a human decide" is one of those features that every workflow framework eventually grows, and they all grow it differently. Temporal calls it a signal. AWS Step Functions calls it the `WaitForTaskToken` callback pattern. Apache Airflow uses sensors. BPMN engines use user tasks. LangGraph calls it an interrupt.
+Every workflow framework grows a "pause for human" primitive: Temporal calls it a signal; AWS Step Functions calls it `WaitForTaskToken`; LangGraph calls it an interrupt. Two structurally different shapes look identical on a whiteboard but audit and fail differently.
 
-What distinguishes a useful pause-for-human design from a frustrating one is the same across all these systems: the framework has to make it easy to express *two different shapes* of human gate. The first shape is "I have a suggested next move; please review and either approve, tweak, or override." This is the dominant shape for routine human-in-the-loop work — content moderation queues, expense approvals, supervisor-suggested next agent. The second shape is "this transition is irreversible or regulatorily-anchored; do not proceed without explicit human assent, and *no timeout* substitutes for that assent." This is the dominant shape for any gate where the human's act of judgement is itself the load-bearing thing being recorded — medical orders, court filings, payment captures over a threshold, regulatory sign-offs.
+Soft: proposes a default; the human approves, edits, or rejects. Hard: no default, blocks indefinitely — the human's act of judgement is the load-bearing artifact.
 
-These two shapes look the same when you sketch them on a whiteboard ("the graph pauses, the human reviews, the graph continues") but they audit differently and they fail differently. Conflating them is the source of subtle bugs. This reading separates them carefully.
+Conflating them produces subtle bugs: soft gates that should be hard auto-approve under load; hard gates block on trivial decisions. Today you name them, see their audit-row shapes, and wire the hard pattern for HITL #5.
 
 ## 3. Core Concepts
 
-### What an interrupt is at the framework level
+### 3.1 Framework primitives — static vs dynamic
 
-LangGraph supports interrupts in two equivalent shapes ([source: docs.langchain.com interrupts, retrieved 2026-05-26](https://docs.langchain.com/oss/python/langgraph/interrupts)):
+LangGraph supports two interrupt forms ([source: docs.langchain.com interrupts, retrieved 2026-05-26](https://docs.langchain.com/oss/python/langgraph/interrupts)):
 
-- **Static (`interrupt_before` / `interrupt_after`)** — declared at compile time. The graph pauses before (or after) the named node every time execution reaches it. Useful when the gate is structural to the workflow — *every* run through this point requires human review.
-- **Dynamic (`interrupt()` function)** — called inside a node body, possibly conditionally. The graph pauses only when the function actually runs. Useful when the gate is conditional — *some* runs require human review based on state (e.g., only flag for human when the model's confidence is below 0.7, or only when the transaction is over $10,000).
+- **`interrupt_before` / `interrupt_after`** — declared at compile time. Pauses before (or after) the named node on *every* run. Use when the gate is structural.
+- **Dynamic `interrupt()` function** — called inside the node body, conditionally. Use when only *some* runs require human review (e.g., confidence < 0.7, or transactions over $10 000).
 
-Both require a checkpointer (otherwise there is nowhere to save the paused state) and a `thread_id` (otherwise the framework cannot match the resume to the right pause). When the graph is resumed via `Command(resume=value)`, that `value` becomes the return value of the `interrupt()` call from inside the node — so the resume *passes data back into the workflow*.
+Both require a checkpointer and a `thread_id`. When resumed via `Command(resume=value)`, `value` becomes the return value of `interrupt()` — the resume *passes data back into the workflow*.
 
-### Soft interrupt — the "supervised suggestion" shape
+> [!TIP]
+> **Choose `interrupt_before` for structural gates; dynamic `interrupt()` for conditional ones.** A gate that fires on every run belongs in compile-time config; one that fires only sometimes belongs in node logic.
 
-A soft interrupt is structurally identical to a hard interrupt — same `interrupt_before` or `interrupt()` call — but the *semantics* are different. The graph proposes a default action; the human can approve it, edit it, or reject it. The state usually includes a `proposed_action` field that the node populated, and the resume payload includes the human's decision.
+### 3.2 Soft interrupt — the supervised-suggestion shape
 
-Typical resume audit row for a soft interrupt:
+A soft interrupt proposes a default action in state; the human approves, edits, or rejects. Audit row (HITL #4 shape from Wed):
 
 ```python
 {
     "action": "HITL_SOFT_RESUME",
-    "actor_id": "user:reviewer-id",
-    "node": "router_decide_next_step",
-    "before": {"proposed_action": "<original suggestion>"},
-    "after": {
-        "approved_action": "<final action, possibly edited>",
-        "edits": {"some_field": "new_value"}  # only if human modified
-    },
-    "rationale": "<optional human note>",
-    "correlation_id": "<threaded>",
-    "ts": "..."
+    "actor_id": "user:reviewer-jdoe",
+    "node": "supervisor_decide_next_worker",
+    "before": {"proposed_action": "fan_out_evaluator_scoring"},
+    "after": {"approved_action": "fan_out_evaluator_scoring", "edits": {}},
+    "rationale": "Looks right — proceed.",
+    "correlation_id": "<from EvaluationState.audit_correlation_id>",
+    "ts": "2026-06-10T09:00:00Z"
 }
 ```
 
-The audit value is "this human reviewed this suggestion and made it final." The graph could in principle proceed without the human (the proposed action is already in state), but the human's review is what graduates it from "system proposal" to "approved action."
+The human's act graduates a system proposal to an approved action. The graph could proceed without review, but the sign-off is the value.
 
-### Hard interrupt — the "no default" shape
+### 3.3 Hard interrupt — the no-default shape
 
-A hard interrupt has no fallback. The graph *cannot* proceed without explicit human input. There is no proposed action embedded in the resume contract — or if there is, it is not authoritative; only what the human submits is.
-
-Typical resume audit row for a hard interrupt:
+No fallback. The decision field is unwritten until the human's resume payload fills it. Audit row (HITL #5 shape — today):
 
 ```python
 {
     "action": "HITL_HARD_RESUME",
-    "actor_id": "user:authorised-decision-maker",
-    "node": "irreversible_gate_node",
-    "before": {"<full snapshot of inputs at the gate>"},
-    "after": {
-        "human_decision": "approve" | "reject",
-        "human_rationale": "<required text>"
-    },
+    "actor_id": "user:ssa-mhardy",
+    "node": "ssa_review_ssdd",
+    "before": {"ssdd_draft": "<full draft at consensus>", "ssa_approval_status": "pending"},
+    "after": {"ssa_approval_status": "approved", "rationale": "<SSA text — required>"},
     "correlation_id": "<threaded>",
-    "ts": "...",
-    "policy_citation": "<the rule that requires this gate>"
+    "ts": "2026-06-11T09:00:00Z",
+    "far_citation": "15.308"
 }
 ```
 
-Notice three differences from the soft row:
+Three differences from soft: no `proposed_action`; rationale required not optional; `far_citation` anchors why the gate exists.
 
-1. **No `proposed_action`** — there is nothing for the human to rubber-stamp.
-2. **Rationale is required, not optional** — the human must record *why*.
-3. **A `policy_citation` field** — the gate exists because some rule requires it. The citation makes the audit trail defensible during later review.
+> [!IMPORTANT]
+> **`far_citation` is the defensibility anchor.** Without it the row is a transition log. With it, it is a regulatory artifact — an OIG auditor asking "why did this transition fire?" gets a citation, not a shrug.
 
-### Why no auto-timeout on a hard interrupt
+### 3.4 No auto-timeout; replay safety
 
-It is tempting to add a "if no response in 24h, default to reject" timeout to a hard interrupt, especially as workflows accumulate stale pauses. **For hard interrupts that exist because of a policy or regulatory requirement, this is a contract violation.** The point of the gate is that the human's judgement is the load-bearing thing. A timeout that auto-resumes is the system substituting an automated decision for the human one — exactly what the gate was designed to prevent.
+**Hard interrupt timeout** — "if no response in 24 h, default to reject" is a contract violation. The timeout substitutes an automated decision for the human's judgement. Correct pattern: escalate; the workflow stays paused.
 
-The right pattern is to **escalate** (notify someone else) and **age out the work item** (mark the *task* as overdue), not to auto-resume the workflow. The workflow stays paused until a human resumes it.
-
-Soft interrupts are different — if no human reviews the suggestion, sometimes auto-applying the default is fine. But this is a per-gate decision, not a framework default.
-
-### How resumes interact with the rest of the graph
-
-When `Command(resume=value)` fires, the graph resumes from the interrupt point with `value` as the return of the `interrupt()` call. Critically ([source: docs.langchain.com durable-execution, retrieved 2026-05-26](https://docs.langchain.com/oss/python/langgraph/durable-execution)):
-
-- **The framework replays from the last super-step boundary, not the exact line.** Any code that ran before `interrupt()` within the node will re-run on resume.
-- **Non-deterministic operations should be inside tasks** so their results are recorded and not re-executed on replay. Otherwise an external API call that was already made will be re-issued.
-- **State written by other nodes in the same super-step (before the interrupt) is already persisted.** Those nodes do not re-run.
-
-This is the "determinism and consistent replay" rule. For soft interrupts, where the suggested action may have been the result of an LLM call, you want the LLM call recorded in a task so the resume does not re-call the model just to recompute a suggestion the human has already reviewed.
+**Resume replay** — when `Command(resume=value)` fires, code that ran before `interrupt()` re-runs ([source: docs.langchain.com durable-execution, retrieved 2026-05-26](https://docs.langchain.com/oss/python/langgraph/durable-execution)). Wrap non-deterministic operations in `task` boundaries so results are recorded on first run and replayed from record.
 
 ## 4. Generic Implementation
 
-A non-Karsun example: a content-moderation pipeline. Soft interrupt for routine queue review; hard interrupt for "remove a user's monetisation status," which is an account-impacting action requiring senior reviewer sign-off.
+Content-moderation pipeline: soft interrupt for routine review; hard for monetisation-impacting actions:
 
 ```python
 from langgraph.graph import StateGraph, START, END
@@ -133,12 +116,10 @@ from typing import TypedDict
 
 class ModerationState(TypedDict):
     item_id: str
-    classifier_label: str          # set upstream by an ML model
-    proposed_action: str | None    # set by the soft gate
-    final_action: str | None       # set by the human resume
-    impacts_monetisation: bool     # set upstream
-
-# --- Soft gate: every queued item is reviewed; the system proposes an action ---
+    classifier_label: str
+    proposed_action: str | None
+    final_action: str | None
+    impacts_monetisation: bool
 
 def soft_review(state: ModerationState) -> dict:
     proposed = "remove" if state["classifier_label"] == "violation" else "keep"
@@ -147,20 +128,14 @@ def soft_review(state: ModerationState) -> dict:
         "proposed_action": proposed,
         "context": {"item_id": state["item_id"]},
     })
-    # Human returned either the proposal, or an edit, or a reject.
     return {"final_action": human["action"]}
-
-# --- Hard gate: monetisation-impacting actions need an additional sign-off ---
 
 def hard_gate_monetisation(state: ModerationState) -> dict:
     if not state["impacts_monetisation"]:
-        return {}   # no gate needed, skip
+        return {}
     human = interrupt({
         "kind": "hard",
-        "context": {
-            "item_id": state["item_id"],
-            "proposed_action": state["final_action"],
-        },
+        "context": {"item_id": state["item_id"], "proposed_action": state["final_action"]},
         "policy_citation": "platform-policy-3.2",
         "rationale_required": True,
     })
@@ -181,61 +156,72 @@ builder.add_edge("hard_gate", END)
 graph = builder.compile(checkpointer=checkpointer)
 ```
 
-Two things worth noticing:
-
-- The *framework call* is the same in both cases — `interrupt(payload)`. The *contract* differs: the soft case ships a proposal; the hard case requires a rationale and cites a policy.
-- The hard gate is implemented dynamically (inside the node body, guarded by `if not state["impacts_monetisation"]`) rather than via `interrupt_before`, because only some items need it. Use `interrupt_before` instead when the gate is structural (always-on).
+The framework call is identical — `interrupt(payload)`. The contract differs: soft ships a proposal; hard requires rationale and cites a policy.
 
 ## 5. Real-world Patterns
 
-**Fintech — high-value wire transfer dual-control.** US correspondent banks use a two-step approval for wires above a threshold: one operator initiates, a second operator must approve before SWIFT submission. The second approval is a hard gate — there is no default, no timeout, and the rationale is captured for audit. Below the threshold, the system may auto-approve with sampled human review (the soft pattern). The fundamentally different audit shape is what makes the difference legible to regulators.
+**Fintech — wire transfer dual-control.** Correspondent banks use two-step approval above a threshold: soft with sampled review below; hard gate above — no default, no timeout, rationale captured.
 
-**Healthcare — clinical decision support overrides.** EHR systems display a soft alert ("this drug interacts with another the patient is on") that the prescriber can dismiss with a one-click rationale. The same EHR has hard stops on certain high-risk orders (e.g., a chemotherapy order over a dose threshold), where the system *will not transmit* without a second oncologist's sign-off. The same UI metaphor (a popup with action buttons) hides two very different gates underneath.
+> [!NOTE]
+> **Cross-domain lesson:** The soft/hard distinction maps to regulatory tiers across every domain. The audit-row shape difference is what makes the distinction legible to regulators — same code primitive, different contract.
 
-**E-commerce — return-fraud holds.** Amazon and similar marketplaces process most returns automatically. When the system detects a pattern consistent with return fraud, the return enters a hard gate that requires a specialist's review and a written disposition before refund. Below the fraud-risk threshold, returns either auto-process or queue for sampled human review (soft gate with a default-allow). The line between the two is policy, not technical capability.
-
-**Aerospace — flight-software change approval.** Spacecraft software uplinks go through a multi-stage review where most changes pass a soft gate (the change-board meeting where defaults are usually accepted) and a small set of changes (anything affecting flight-critical systems) go through a hard gate where the chief engineer's individual sign-off is recorded by name. The hard gate's purpose is to make accountability identifiable in the post-mortem of any incident.
+**Healthcare — clinical decision support.** EHR soft alerts dismiss with one-click rationale. Hard stops on high-risk orders block until a second oncologist signs off. Same UI metaphor; structurally different gates with different audit trails.
 
 ## 6. Best Practices
 
-- **Name the two interrupts differently in code and audit logs.** `HITL_SOFT_RESUME` vs `HITL_HARD_RESUME` makes downstream filtering and reporting straightforward.
-- **For hard interrupts, require a rationale field on resume and reject the resume payload without it.** Optional rationale gets skipped; mandatory rationale is the only way the audit row is complete.
-- **Include a policy citation field on hard-gate audit rows.** When a reviewer later asks "why did the platform require human input here?", the citation is the answer.
-- **Never auto-timeout a hard interrupt.** Escalate the task, not the workflow.
-- **Wrap LLM calls used inside an interrupt node in a `task` so they are not re-issued on resume.** Avoids double-billing and non-deterministic re-runs.
-- **Set the `actor_id` from the *authenticated* user submitting the resume, not from the system.** "actor_id = system" on a human gate is the same as no gate.
-- **Use `interrupt_before` for structural gates; use dynamic `interrupt()` for conditional gates.** Mixing them confuses both readers and the audit trail.
+- **Name them differently in code and logs.** `HITL_SOFT_RESUME` vs `HITL_HARD_RESUME` makes filtering straightforward.
+- **Require rationale on hard-gate resumes; reject without it.**
+- **Include a policy citation on every hard-gate audit row.**
+- **Never auto-timeout a hard interrupt.** Escalate; the workflow stays paused.
+- **`interrupt_before` for structural gates; dynamic `interrupt()` for conditional ones.**
+
+> [!WARNING]
+> **Anti-pattern: `langgraph-v0x-run-resume`.** LangGraph v0.x used `.run()` and a separate `.resume()` method. Sources on the open internet — blog posts, tutorials, Stack Overflow answers from 2023–2024 — still show this pattern. In LangGraph v1.0, the resume mechanism is `Command(resume=value)` passed to `graph.invoke()`. If you see `.resume()` called directly, or `.run()` used as the primary invocation path, the source is v0.x. Cite the v1.x docs at `docs.langchain.com/oss/python/langgraph/interrupts`.
 
 ## 7. Hands-on Exercise
 
-**Whiteboarding exercise (12 min).** For a generic "loan approval" workflow with three steps — eligibility check, risk scoring, and disbursement — identify which human gates are soft and which are hard. For each:
+For a "loan approval" workflow — eligibility check → risk scoring → disbursement — classify each gate as soft or hard, sketch its audit-row schema, and say what happens when no human responds for 24 hours: (a) loan officer reviews edge-case applications; (b) every loan above $250 k requires a senior underwriter's individual sign-off; (c) customer must e-sign before disbursement; (d) fraud-ops reviews fraud-model flags.
 
-1. State whether it is soft or hard and why.
-2. Sketch the resume audit row schema.
-3. Say what should happen if no human responds for 24 hours.
+> [!NOTE]
+> **Self-check** (30 s — answer mentally before expanding)
+>
+> 1. Gate (b) — senior underwriter sign-off above $250 k. Should it use `interrupt_before` or dynamic `interrupt()`? Why?
+> 2. You add a 24-hour auto-reject timeout to a hard gate. The auditor asks "who rejected this loan?" and the system answers "system." What is the compliance problem?
 
-The four candidate gates:
+<details>
+<summary>Show answers</summary>
 
-- (a) After the eligibility check, a loan officer reviews edge-case applications flagged by the rules engine.
-- (b) After risk scoring, every loan above $250k requires a senior underwriter's individual sign-off.
-- (c) Before disbursement, the customer must e-sign the loan agreement.
-- (d) Before disbursement, fraud-ops reviews any application flagged by the fraud model.
+1. Dynamic `interrupt()` inside the node body, guarded by `if state["loan_amount"] > 250_000`. The gate is conditional — only some runs hit it. `interrupt_before` would pause every loan regardless of amount, which is wrong. Use static `interrupt_before` only when the gate is structural (every run through that node requires human review).
+2. The audit row records "system" as the actor. This means no human made the rejection decision — an automated process substituted for the senior underwriter's independent judgement. For a regulatory gate (the analogue of FAR 15.308) this is the exact violation the gate was designed to prevent. The compliance problem: the decision is not defensible as independent human judgement, and any later dispute requires reconstructing what actually happened from incomplete records.
 
-**What good looks like.** (a) is soft — the rules engine proposes a decision, the loan officer reviews; on no-response, default-defer to a queue. (b) is hard — the dollar threshold drives a policy gate; no timeout, escalate the work item. (c) is hard *from the human side* (no default for the customer) but the workflow can have a cancel-after-N-days timeout, because the customer is the principal, not a system actor. (d) is hard — fraud holds do not auto-clear; escalate. A weak answer marks (b) and (c) the same; a strong answer notices that the *direction* of the hard-gate principal matters.
+</details>
 
 ## 8. Key Takeaways
 
-- What is the difference between a soft and a hard interrupt at the audit-row level — what fields are present in one but not the other? (LO1, LO4)
-- When do I prefer `interrupt_before` over a dynamic `interrupt()` call, and vice versa? (LO2)
-- How does `Command(resume=...)` flow into the paused node, and what happens to non-deterministic code that ran inside the node before the interrupt? (LO3)
-- Why is auto-timeout on a hard interrupt a contract violation, and what is the right pattern to handle stale gates? (LO5)
-- How do I decide, for a given human gate I am designing, whether it is soft or hard? (LO1, LO5)
+- Soft interrupt: proposal in state, human approves/edits/rejects; auto-timeout may be acceptable depending on policy.
+- Hard interrupt: no proposal, no default, blocks indefinitely; auto-timeout is a contract violation for policy-anchored gates.
+- Both use the same framework primitive; the audit-row contract distinguishes them.
+- `Command(resume=value)` passes `value` as the return of `interrupt()` inside the node; code before the interrupt re-runs on resume.
 
-## Sources
+## 9. Sources
 
-1. [LangGraph Interrupts — interrupt(), Command, interrupt_before, resume model (v1.x docs)](https://docs.langchain.com/oss/python/langgraph/interrupts) — retrieved 2026-05-26
-2. [LangGraph Persistence — checkpointer requirement, thread_id semantics](https://docs.langchain.com/oss/python/langgraph/persistence) — retrieved 2026-05-26
-3. [LangGraph Durable Execution — replay, determinism, tasks](https://docs.langchain.com/oss/python/langgraph/durable-execution) — retrieved 2026-05-26
-4. [LangGraph low-level concepts — super-step boundary semantics](https://langchain-ai.github.io/langgraph/concepts/low_level/) — retrieved 2026-05-26
+<details>
+<summary>References — retrieved via /web-research per D-046</summary>
 
-Last verified: 2026-05-26
+- https://docs.langchain.com/oss/python/langgraph/interrupts — retrieved 2026-05-26 — hot-tech
+- https://docs.langchain.com/oss/python/langgraph/persistence — retrieved 2026-05-26 — hot-tech
+- https://docs.langchain.com/oss/python/langgraph/durable-execution — retrieved 2026-05-26 — hot-tech
+- https://langchain-ai.github.io/langgraph/concepts/low_level/ — retrieved 2026-05-26 — hot-tech
+
+</details>
+
+<details>
+<summary>Deeper dive — for senior FDEs (optional, not in reading budget)</summary>
+
+**The direction of the hard-gate principal.** In the loan example, gate (c) — customer e-sign — is hard "from the human side" (no default for the customer) but the *workflow* can legitimately cancel after N days because the customer is the principal making a choice about their own loan, not a system actor exercising regulatory authority. The distinction: when the hard gate exists to protect a third party or a regulatory requirement (underwriter sign-off, SSA non-delegation), auto-timeout is a violation. When the hard gate exists because the principal must affirmatively consent (customer e-sign), a bounded cancellation window is legitimate business logic. A strong senior answer recognises this nuance and names the *direction* of the gate's authority.
+
+**Interrupt payloads and type safety.** The `interrupt(payload)` call accepts any dict. The resume `Command(resume=value)` also accepts any value. Both are untyped at the framework level. Senior practice: define a Pydantic model for both the interrupt payload and the resume payload, validate on entry to the node, and raise `ValueError` with a descriptive message if validation fails. This catches malformed resume payloads (e.g., missing rationale on a hard gate) at the boundary rather than deep in node logic.
+
+</details>
+
+Last verified: 2026-06-06
