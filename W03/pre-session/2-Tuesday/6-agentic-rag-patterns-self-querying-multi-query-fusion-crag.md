@@ -4,7 +4,7 @@ day: Tue
 topic_slug: agentic-rag-patterns-self-querying-multi-query-fusion-crag
 topic_title: "Agentic-RAG patterns — self-querying, multi-query, RAG Fusion, CRAG"
 parent_overview: W03/pre-session/2-Tuesday/1-DailyTopicOverview.md
-estimated_minutes: 25
+estimated_minutes: 12
 sources:
   - url: https://js.langchain.com/docs/how_to/self_query/
     retrieved_on: 2026-05-26
@@ -24,122 +24,78 @@ sources:
   - url: https://glaforge.dev/posts/2026/02/10/advanced-rag-understanding-reciprocal-rank-fusion-in-hybrid-search/
     retrieved_on: 2026-05-26
     recency_category: hot-tech
-last_verified: 2026-05-26
+last_verified: 2026-06-06
 ---
 
 # Agentic-RAG patterns — self-querying, multi-query, RAG Fusion, CRAG
 
+> [!NOTE]
+> **From earlier:** W2 built the RAG layer (`POST /rag/clause-search`). Today that layer becomes a tool the ReAct agent calls — the first time the W2 layer is consumed by an agent rather than a human.
+
 ## 1. Learning Objectives
 
-- By the end of this reading, the learner can distinguish four agentic-retrieval patterns — self-querying, multi-query, RAG Fusion, and CRAG — and articulate the failure mode each is designed to address.
-- By the end of this reading, the learner can describe how self-querying retrieval decomposes a natural-language query into a semantic component and a metadata-filter component.
-- By the end of this reading, the learner can explain the Reciprocal Rank Fusion (RRF) algorithm and why it operates on ranks rather than on scores.
-- By the end of this reading, the learner can summarise CRAG's three confidence-level branches (correct / ambiguous / wrong) and the corrective action each triggers.
-- By the end of this reading, the learner can sequence the four patterns by cost and complexity, and articulate when escalation from the cheap pattern to the expensive one is worth the latency budget.
+- Distinguish four agentic-retrieval patterns — self-querying, multi-query, RAG Fusion, CRAG — and articulate the failure mode each addresses
+- Describe how self-querying retrieval decomposes a natural-language query into a semantic component and a metadata-filter component
+- Explain the Reciprocal Rank Fusion (RRF) algorithm and why it operates on ranks rather than scores
+- Summarise CRAG's three confidence-level branches and the corrective action each triggers
+- Sequence the four patterns by cost and complexity and articulate when escalation is worth the latency budget
 
 ## 2. Introduction
 
-> **Reading-time note.** This is the densest pre-session topic in W03 — 25 min reading time. It covers four agentic-RAG patterns (self-querying, multi-query, RAG Fusion, CRAG) as a single family because the patterns form a *cost ladder* and choosing between them is the whole pedagogical point. Splitting them across separate files would lose the comparative framing. Allocate the time deliberately — skimming this one is the wrong move.
+The 2023 baseline RAG pipeline — embed the query, single vector search, stuff top-K into the prompt — fails predictably: ambiguous queries, implicit metadata filters, multi-faceted questions, wrong top-K. By 2025–2026 the field converged on **agentic-RAG patterns** in which an LLM decides what to retrieve, evaluates the result, and re-retrieves if necessary.
 
-The 2023 baseline RAG pipeline — embed the user's query, do a single vector search, stuff the top-K results into the prompt — was a useful first iteration. It also fails on a predictable list of inputs: ambiguous queries, multi-faceted questions, queries that need metadata filters the user did not articulate, queries where the top-K retrieval is just wrong.
+The arXiv survey "Agentic Retrieval-Augmented Generation" (2501.09136) catalogues four patterns that appear in nearly every production stack: self-querying, multi-query, RAG Fusion, and CRAG. They form a **cost ladder** — choose the lowest-cost pattern that handles your actual failure modes. Stacking all four on every query is pure cost without proportional uplift.
 
-By 2025–2026 the field had converged on a family of **agentic-RAG patterns** — retrieval pipelines in which an LLM is in the loop, deciding what to retrieve, evaluating the result, and re-retrieving if necessary. The arXiv "Agentic Retrieval-Augmented Generation: A Survey" (2501.09136) catalogues the family; four patterns appear in nearly every production stack: self-querying, multi-query, RAG Fusion (multi-query + Reciprocal Rank Fusion), and CRAG (Corrective RAG with an evaluator). They form a ladder of cost and capability, and the discipline is choosing the lowest-cost pattern that handles your actual failure modes.
-
-This reading walks the four patterns as a family — what each fixes, how each is implemented, and how to escalate from cheap to expensive without paying for capability you do not need.
+For intake-triage today: the W2 `POST /rag/clause-search` endpoint is callable as an agent tool. The agent picks the pattern — self-querying for filtered clause retrieval, multi-query for ambiguous phrasing, CRAG when retrieval quality is unknown.
 
 ## 3. Core Concepts
 
 ### 3.1 Self-querying retrieval — extract filters from natural language
 
-A self-querying retriever uses an LLM to parse the user's natural-language query into two parts:
-
-- A **semantic query**, used for the vector similarity search.
-- A **structured filter**, applied as metadata constraints on the vector store.
-
-Example. The query *"papers on transformer architectures published after 2022 with at least 100 citations"* becomes:
+A self-querying retriever uses an LLM to parse a natural-language query into a **semantic query** for vector similarity search and a **structured filter** applied as metadata constraints.
 
 ```json
 {
-  "query": "transformer architectures",
+  "query": "small-business set-aside clauses",
   "filter": {
     "AND": [
-      {"field": "year", "op": ">", "value": 2022},
-      {"field": "citations", "op": ">=", "value": 100}
+      {"field": "NAICS", "op": "=", "value": "541512"},
+      {"field": "set_aside_code", "op": "=", "value": "SBA"}
     ]
   }
 }
 ```
 
-The vector store retrieves on the semantic part, filters on the metadata part, returns the intersection. The pattern requires a vector store that supports metadata filtering (MongoDB Atlas Vector Search, Pinecone, Qdrant, Weaviate, Elasticsearch — most modern ones do). The LangChain `SelfQueryRetriever` is the most-cited reference implementation; equivalent shapes exist in LlamaIndex and Haystack.
+Requires a vector store with metadata filtering (MongoDB Atlas, Pinecone, Qdrant). LangChain `SelfQueryRetriever` is the reference implementation. **Failure mode fixed:** plain semantic search ignores metadata — "clauses for small-business set-asides" retrieves clauses from every NAICS code without the filter.
 
-**The failure mode it fixes.** Plain semantic search treats every query as semantic. *"Papers after 2022"* will retrieve papers from 2018 and 2024 with equal weight if the year is only in metadata. Self-querying explicitly routes the date constraint through the metadata filter.
+### 3.2 Multi-query retrieval — N variants defend against phrasing brittleness
 
-### 3.2 Multi-query retrieval — N variants to defend against single-phrasing brittleness
-
-A multi-query retriever asks the LLM to **rewrite** the user query as N alternative phrasings (typically 3–5), runs vector search for each variant in parallel, and fuses the result sets. The defence is against single-phrasing brittleness — the user's exact wording may not match the corpus's exact wording.
-
-```
-user query: "how do I make my SaaS app GDPR compliant?"
-
-variants:
-  1. "GDPR compliance requirements for SaaS applications"
-  2. "data privacy regulation implementation for software services"
-  3. "European data protection law compliance steps"
-```
-
-Each variant retrieves its own top-K; the union is deduplicated and passed forward. Cost is N × the baseline vector-search cost plus one LLM call to generate the variants.
-
-**The failure mode it fixes.** Vocabulary mismatch — the user said "compliance" but the canonical doc says "data protection law."
+A multi-query retriever rewrites the query as N alternative phrasings (typically 3–5), runs parallel vector searches, and fuses the result sets. **Failure mode fixed:** vocabulary mismatch — "compliance obligations" vs. "regulatory requirements" — variant phrasings cover both.
 
 ### 3.3 RAG Fusion — multi-query + Reciprocal Rank Fusion
 
-RAG Fusion (Raudaschl 2024, arXiv 2402.03367) extends multi-query retrieval with **Reciprocal Rank Fusion (RRF)** as the merge step. Instead of unioning the result sets, RRF computes a fused score from the ranks each document appears at across the N variant searches:
+RAG Fusion (Raudaschl 2024, arXiv 2402.03367) adds **Reciprocal Rank Fusion (RRF)** as the merge step:
 
 ```
 RRF_score(doc) = Σ_variant   1 / (k + rank_in_variant(doc))
 ```
 
-with `k` typically 60. Documents that rank high in multiple variants float to the top; documents that rank high in only one variant are deprioritised. The signal is robust because it depends on the relative ordering across variants, not on score magnitudes — which is essential when you are fusing results from different retrievers or indexes that score on different scales.
-
-**Why ranks not scores.** Vector-search scores from different indexes (BM25 vs cosine vs dot product vs hybrid) are not directly comparable. Two systems may both return "highly relevant" but one returns a score of 0.92 and the other a score of 4.7. RRF sidesteps this by ignoring the score magnitudes entirely.
-
-The Raudaschl repository ships an evaluation harness against NFCorpus/BEIR; the reported uplift over a baseline is +22% NDCG@5 and +40% recall@10 when RRF is combined with hybrid (BM25 + vector) search.
+with `k` typically 60. Documents ranking high in multiple variants float to the top. **Why ranks not scores:** BM25, cosine, and dot-product scores are not comparable across indexes. RRF ignores score magnitudes — ranks compose across heterogeneous retrievers.
 
 ### 3.4 CRAG — Corrective RAG with a quality evaluator
 
-Corrective RAG (Yan et al. 2024, arXiv 2401.15884) sits one rung up the ladder. After retrieval, an LLM-judge evaluator scores the retrieved documents on whether they actually answer the question. The evaluator emits one of three labels:
+Corrective RAG (Yan et al. 2024, arXiv 2401.15884) adds one LLM-judge step after retrieval. The evaluator emits: **Correct** (use documents as-is), **Ambiguous** (augment with web search or KG), **Wrong** (fall back entirely to the alternative). Cost: one extra LLM call per retrieval. **Failure mode fixed:** retrieval-quality blindness — baseline RAG cannot detect whether its top-K is relevant.
 
-- **Correct.** The retrieval is reliable. Use the documents directly (or refine via a decompose-then-recompose step).
-- **Ambiguous.** Confidence is in the middle band. Augment with an alternative retrieval source — typically a web search — and combine.
-- **Wrong.** The retrieval is unreliable. Fall back entirely to the alternative source (web, KG, or a rewritten query).
-
-The original paper uses a lightweight T5-based evaluator; production implementations more commonly use a small LLM call with a structured-output prompt. The cost is one extra LLM call per retrieval. The benefit is that hallucinated answers — which usually trace back to the model trying to answer from irrelevant retrieved context — are substantially reduced.
-
-**The failure mode it fixes.** Retrieval-quality blindness — the baseline RAG pipeline has no way to tell whether its top-K is actually relevant; CRAG adds a sanity check.
-
-### 3.5 The ladder — cost, complexity, when to escalate
-
-| Pattern | LLM calls per query | Vector searches per query | Use when |
-|---------|---------------------|---------------------------|----------|
-| Baseline RAG | 1 (generation) | 1 | Top-K consistently usable |
-| Self-querying | 2 (parse + generation) | 1 | Queries carry implicit metadata filters |
-| Multi-query | 2 + N×0 (just N searches) | N | Vocabulary mismatch is a failure mode |
-| RAG Fusion | 2 (rewrite + generation) | N | You need both vocabulary defence and ranking robustness |
-| CRAG | 3+ (retrieve + evaluate + maybe re-retrieve + generate) | 1 + (maybe 1 fallback) | Hallucination on irrelevant retrieval is a measured problem |
-
-The discipline is empirical: instrument your baseline, identify the failure mode that hurts your users most, escalate to the pattern that addresses *that* failure mode. Stacking all four patterns on every query is pure cost without proportional uplift.
-
-### 3.6 Where these patterns live in the agent loop
-
-In an agentic-RAG implementation, the patterns above are **tools the agent can call** rather than fixed pipeline stages. The agent receives the user question, reasons about which retrieval shape fits, calls the appropriate tool, evaluates the result, and either answers or re-retrieves. LangGraph models this as a directed cyclic graph with conditional branching and persistent checkpoints; the agent traverses the graph at runtime. The advantage over a fixed pipeline: simple queries pay the baseline cost; only hard queries trigger the expensive patterns.
+> [!IMPORTANT]
+> **The ladder.** Baseline RAG (1 LLM call, 1 search) → Self-querying (2 calls, 1 search — implicit metadata filters) → Multi-query (2 calls, N searches — vocab mismatch) → RAG Fusion (2 calls, N searches — ranking robustness) → CRAG (3+ calls — retrieval-quality blindness). Instrument the baseline, identify the dominant failure mode, escalate to the pattern that addresses it.
 
 ## 4. Generic Implementation
 
-A generic self-querying retriever shape, expressed independent of LangChain's specific API. Imagine a product-search service for a generic e-commerce site.
+A generic self-querying retriever shape — product search, illustrating the parse-then-filter pattern:
 
 ```python
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
+from typing import Optional
 
 class ProductSearchQuery(BaseModel):
     semantic_query: str
@@ -147,46 +103,29 @@ class ProductSearchQuery(BaseModel):
     price_min: Optional[float] = Field(default=None, ge=0)
     category: Optional[str] = None
     in_stock_only: bool = False
-    rating_min: Optional[float] = Field(default=None, ge=0, le=5)
 
-def parse_query_to_structured(natural_query: str, llm) -> ProductSearchQuery:
-    """
-    LLM call that decomposes the user's natural-language query into a structured
-    search object. The LLM's job is *just* the parse — no semantic understanding
-    of the corpus, just intent extraction.
-    """
-    system_prompt = (
+def parse_query(natural_query: str, llm) -> ProductSearchQuery:
+    """LLM call: intent extraction only — no semantic understanding of the corpus."""
+    system = (
         "Parse the user's product search into a ProductSearchQuery. "
-        "Extract any price, category, stock, or rating constraints explicitly. "
-        "Put the remaining intent in semantic_query."
+        "Extract price, category, stock constraints explicitly. "
+        "Remaining intent goes in semantic_query."
     )
-    return llm.structured_output(ProductSearchQuery, system=system_prompt, user=natural_query)
+    return llm.structured_output(ProductSearchQuery, system=system, user=natural_query)
 
 def search(natural_query: str, llm, vector_store) -> list:
-    parsed = parse_query_to_structured(natural_query, llm)
-
+    parsed = parse_query(natural_query, llm)
     metadata_filter = {}
     if parsed.price_max is not None: metadata_filter["price"] = {"$lte": parsed.price_max}
     if parsed.price_min is not None: metadata_filter.setdefault("price", {})["$gte"] = parsed.price_min
     if parsed.category: metadata_filter["category"] = parsed.category
     if parsed.in_stock_only: metadata_filter["in_stock"] = True
-    if parsed.rating_min is not None: metadata_filter["rating"] = {"$gte": parsed.rating_min}
-
     return vector_store.similarity_search(
-        query=parsed.semantic_query,
-        filter=metadata_filter,
-        k=20,
+        query=parsed.semantic_query, filter=metadata_filter, k=20
     )
-```
 
-A generic RRF implementation against the result sets from a multi-query search:
-
-```python
 def reciprocal_rank_fusion(result_lists: list[list[str]], k: int = 60) -> list[tuple[str, float]]:
-    """
-    result_lists: a list of ranked document-id lists, one per query variant.
-    Returns documents sorted by RRF score.
-    """
+    """result_lists: ranked doc-id lists, one per query variant. Returns docs by RRF score."""
     fused: dict[str, float] = {}
     for ranking in result_lists:
         for rank, doc_id in enumerate(ranking):
@@ -194,76 +133,79 @@ def reciprocal_rank_fusion(result_lists: list[list[str]], k: int = 60) -> list[t
     return sorted(fused.items(), key=lambda kv: kv[1], reverse=True)
 ```
 
-Three things worth noticing in these snippets:
-
-1. **The parse is a separate LLM call from the generation.** Self-querying does not embed the structured-output parse inside the answer-generation prompt; keeping them separate lets you cache, test, and observe each independently.
-2. **The metadata-filter shape is vector-store-specific.** Mongo, Pinecone, Qdrant, and Weaviate each have their own filter dialect. Production implementations either standardise on one or wrap with an adapter.
-3. **RRF treats every variant equally.** Confidence-weighted variants (the Weighted RRF mechanism in recent 2026 papers) are a refinement; the unweighted shape is the right starting point.
+The parse is a separate LLM call from generation — cache, test, and observe each independently. Metadata-filter shape is vector-store-specific; wrap with an adapter. RRF treats every variant equally — weighted RRF is a refinement; start unweighted.
 
 ## 5. Real-world Patterns
 
-### 5.1 E-commerce — Etsy, Wayfair, Shopify product search
+**Legal research (Casetext CoCounsel, Harvey).** "Negligent misrepresentation by an architect" vs. "professional negligence by a design professional" — multi-query with synonym variants is the default. RAG Fusion merges results across case-law and secondary-source indexes.
 
-E-commerce product search is the canonical self-querying use case. Shoppers type *"blue dress under $50 for a summer wedding"*, and a baseline vector search returns dresses of every colour and price. Etsy, Wayfair, and Shopify's storefront search products all use LLM-driven parsing to extract `colour=blue`, `price<=50`, `occasion=wedding`, `season=summer` as metadata filters before the semantic search. The lift is enormous on long-tail queries that no static facet UI could reasonably anticipate.
+**E-commerce (Etsy, Wayfair, Shopify).** "Blue dress under $50 for a summer wedding" — baseline vector search ignores colour and price constraints. Self-querying extracts `colour=blue`, `price<=50`, `occasion=wedding` as metadata filters.
 
-### 5.2 Legal research — Casetext CoCounsel, Harvey, Lexis+ AI
+**Customer support (Zendesk Resolve, Intercom Fin).** CRAG added on top of baseline RAG in 2025–2026. The evaluator's "wrong" branch prevents confident wrong answers.
 
-Legal-research assistants face a brutal vocabulary-mismatch problem — the lawyer asks about "negligent misrepresentation by an architect" and the relevant case law uses "professional negligence by a design professional." Multi-query retrieval with LLM-generated synonym variants is the default pattern. RAG Fusion with RRF then merges results from variant searches across both the case-law index and the secondary-source index.
-
-### 5.3 Customer support — Zendesk Resolve, Intercom Fin
-
-Support-bot vendors layered CRAG on top of baseline RAG in 2025–2026 to control the hallucination rate. The evaluator step looks at the top retrieved KB articles and decides "yes this answers the user's question" / "partially, but I need more" / "no, escalate to a human." The "no" branch is critical — without it, the bot produces a confident wrong answer that costs more than the deflection saved.
-
-### 5.4 Academic research — Elicit, Consensus, Scite
-
-Research-assistant tools rely on self-querying for the metadata side (publication date, journal, citation count) and multi-query/fusion for the semantic side (the same research question phrased five different ways to match different communities' jargon). The combination is documented in product blogs as a meaningful uplift on the "I asked about X but the canonical paper uses term Y" failure mode.
-
-### 5.5 Internal enterprise knowledge — Glean, Microsoft Copilot
-
-Enterprise search products use the full ladder. Self-querying handles "documents from the marketing team last quarter." Multi-query handles "policy on remote work" → "WFH policy" → "telecommuting guidelines." RRF handles fusion across SharePoint, Confluence, Slack, and email indexes. CRAG handles the high-stakes legal/compliance queries where a hallucinated answer is unacceptable.
+> [!NOTE]
+> **Acquire-gov framing.** The W2 RAG layer is the unstructured side (clause text, FAR/DFARS prose). Self-querying is the daily pattern — extract NAICS code and set-aside type from context, use as metadata filters on `clause-search`. Multi-query + CRAG are escalation tools when the simple retrieval fails.
 
 ## 6. Best Practices
 
-- **Instrument the baseline before escalating.** Without metrics on which queries fail and why, you cannot tell which pattern to add.
-- **Cache the parse step in self-querying.** The same natural-language query produces the same structured query; deterministic caching is a free latency win.
-- **Use RRF over score-based fusion when combining results from heterogeneous retrievers.** Ranks compose; scores do not.
-- **Calibrate the CRAG evaluator thresholds against ground-truth data.** A miscalibrated evaluator either lets bad retrievals through ("correct" too eagerly) or burns budget on unnecessary fallbacks ("wrong" too eagerly).
-- **Reach for the cheapest pattern that addresses the failure mode.** Adding all four to every query is pure cost.
-- **Make the agent's retrieval choice observable.** When the agent picks "multi-query with fusion," the trace should record *why* — what feature of the query triggered the choice.
-- **Treat the retrieval evaluator's labels as data.** Periodically review the "wrong" cases to find systematic gaps in your corpus.
+- Instrument the baseline before escalating — metrics tell you which pattern to add
+- Cache the parse step in self-querying — same query, same structured output; caching is a free latency win
+- Use RRF over score-based fusion for heterogeneous retrievers — ranks compose; scores do not
+- Calibrate CRAG thresholds against ground-truth — "correct" too eagerly lets bad retrievals through; "wrong" too eagerly burns budget
+- Make retrieval choices observable — the trace should record why the agent picked multi-query over baseline
+
+> [!WARNING]
+> **Anti-pattern: `naive-rag-as-default`.** Defaulting to single-query baseline RAG for every agentic retrieval — regardless of query type or measured failure mode — is the most common deployment mistake. For the acquisition domain specifically, a query like "clauses requiring small-business participation post-amendment" will silently retrieve irrelevant clauses if the NAICS and set-aside metadata are not filtered. Baseline RAG is the *starting point* to instrument and iterate from, not the permanent solution.
 
 ## 7. Hands-on Exercise
 
-**Whiteboard exercise (15 min).** You are designing the retrieval layer for an internal knowledge base at a global logistics company. Users include drivers, dispatchers, and corporate operations. Common queries:
+You are designing the retrieval layer for an internal knowledge base at a global logistics company. For each query below, identify the best pattern, the metadata fields needed, and the failure mode being defended against: (a) "What's the protocol for refrigeration failure on a perishable shipment?" (b) "Show me all incident reports from EMEA depots in 2025 involving forklift damage." (c) "Why are our Helsinki on-time delivery rates dropping?" (d) "Is there a recent policy update on dangerous-goods labeling?"
 
-- *"What's the protocol for a refrigeration failure on a perishable shipment?"* (procedure lookup)
-- *"Show me all incident reports from EMEA depots in 2025 involving forklift damage."* (filtered list)
-- *"Why are our Helsinki on-time delivery rates dropping?"* (diagnosis — multi-source)
-- *"Is there a recent policy update on dangerous-goods labeling?"* (recency-sensitive)
+> [!NOTE]
+> **Self-check** (30 s — answer mentally before expanding)
+>
+> 1. Why does Reciprocal Rank Fusion use ranks instead of scores?
+> 2. What are CRAG's three confidence branches and what action does each trigger?
 
-For each query, decide:
+<details>
+<summary>Show answers</summary>
 
-1. Which retrieval pattern best fits — baseline, self-querying, multi-query, RAG Fusion, or CRAG?
-2. What metadata fields are needed on the underlying corpus to support the pattern?
-3. What is the failure mode the pattern is defending against?
+1. Vector-search scores from different retrievers (BM25, cosine, dot product, hybrid) are not on the same scale. Two systems may both return "highly relevant" documents with scores of 0.92 and 4.7 respectively — these are not directly comparable. RRF operates on ranks, which are comparable across any retriever: rank 1 means "best result from this retriever" regardless of the underlying scoring function.
+2. **Correct** — retrieval is reliable; use documents directly. **Ambiguous** — confidence is in the middle band; augment with an alternative source (web search or knowledge graph) and combine results. **Wrong** — retrieval is unreliable; fall back entirely to the alternative source. The labels are produced by an LLM-judge evaluator step that runs after the initial retrieval.
 
-**What good looks like.** A solution maps query 1 to baseline (single procedure, clear semantics), query 2 to self-querying (`region=EMEA`, `year=2025`, `incident_type=forklift_damage`), query 3 to multi-query + RAG Fusion across multiple corpus partitions (operations logs + incident reports + customer feedback), and query 4 to self-querying with a date filter plus possible CRAG to verify the retrieved policy is actually the latest one. Bonus: the writer identifies that query 4 needs corpus-level versioning so "latest" is unambiguous.
+</details>
 
 ## 8. Key Takeaways
 
-- **What are the four agentic-RAG patterns, and what failure mode does each address?** (Self-querying — metadata implicit in natural language; multi-query — vocabulary mismatch; RAG Fusion — fusing heterogeneous retrievers; CRAG — retrieval-quality blindness.)
-- **Why does Reciprocal Rank Fusion use ranks instead of scores?** (Scores from different retrievers are not on the same scale; ranks are.)
-- **What are CRAG's three confidence branches?** (Correct — use as-is; ambiguous — augment with fallback; wrong — replace with fallback.)
-- **How do you decide which pattern to escalate to?** (Instrument the baseline, identify the dominant failure mode, escalate to the pattern that addresses it.)
-- **Why is agentic-RAG a graph rather than a fixed pipeline?** (Simple queries pay baseline cost; only the queries that need the expensive patterns trigger them.)
+- **Four patterns, cost ladder:** self-querying → multi-query → RAG Fusion → CRAG
+- **RRF uses ranks, not scores** — ranks are comparable across heterogeneous retrievers; raw scores are not
+- **CRAG's three branches:** correct (use as-is), ambiguous (augment), wrong (replace with fallback)
+- **Escalate empirically** — instrument baseline, identify dominant failure mode, pick the pattern that addresses it
+- **Retrieval patterns are tools** — simple queries pay baseline cost; hard queries escalate
 
-## Sources
+## 9. Sources
 
-1. [Self-querying retrieval — LangChain](https://js.langchain.com/docs/how_to/self_query/) — retrieved 2026-05-26
-2. [RAG-Fusion: multi-query + Reciprocal Rank Fusion — Raudaschl GitHub](https://github.com/Raudaschl/rag-fusion) — retrieved 2026-05-26
-3. [RAG-Fusion: A New Take on Retrieval-Augmented Generation (Raudaschl 2024, arXiv 2402.03367)](https://arxiv.org/abs/2402.03367) — retrieved 2026-05-26
-4. [Corrective Retrieval Augmented Generation (Yan et al. 2024, arXiv 2401.15884)](https://arxiv.org/abs/2401.15884) — retrieved 2026-05-26
-5. [Agentic Retrieval-Augmented Generation: A Survey (arXiv 2501.09136)](https://arxiv.org/html/2501.09136v4) — retrieved 2026-05-26
-6. [Advanced RAG — Understanding Reciprocal Rank Fusion in Hybrid Search (Guillaume Laforge)](https://glaforge.dev/posts/2026/02/10/advanced-rag-understanding-reciprocal-rank-fusion-in-hybrid-search/) — retrieved 2026-05-26
+<details>
+<summary>References — retrieved via /web-research per D-046</summary>
 
-Last verified: 2026-05-26
+- https://js.langchain.com/docs/how_to/self_query/ — Self-querying retrieval (LangChain) — retrieved 2026-05-26 — hot-tech
+- https://github.com/Raudaschl/rag-fusion — RAG-Fusion: multi-query + Reciprocal Rank Fusion (Raudaschl GitHub) — retrieved 2026-05-26 — foundation-stable
+- https://arxiv.org/abs/2402.03367 — RAG-Fusion: A New Take on Retrieval-Augmented Generation (Raudaschl 2024) — retrieved 2026-05-26 — foundation-stable
+- https://arxiv.org/abs/2401.15884 — Corrective Retrieval Augmented Generation (Yan et al. 2024) — retrieved 2026-05-26 — foundation-stable
+- https://arxiv.org/html/2501.09136v4 — Agentic Retrieval-Augmented Generation: A Survey — retrieved 2026-05-26 — hot-tech
+- https://glaforge.dev/posts/2026/02/10/advanced-rag-understanding-reciprocal-rank-fusion-in-hybrid-search/ — Advanced RAG: Understanding Reciprocal Rank Fusion in Hybrid Search (Guillaume Laforge) — retrieved 2026-05-26 — hot-tech
+
+</details>
+
+<details>
+<summary>Deeper dive — for senior FDEs (optional, not in reading budget)</summary>
+
+The Raudaschl RAG-Fusion repository ships an evaluation harness against NFCorpus/BEIR. The reported uplift over a baseline is +22% NDCG@5 and +40% recall@10 when RRF is combined with hybrid (BM25 + vector) search. The +40% recall figure is what motivates the pattern for the acquisition-clause retrieval use case — missing a relevant clause is higher-stakes than including an irrelevant one (false-negative cost exceeds false-positive cost).
+
+Weighted RRF (2026 refinement): rather than treating every query variant equally, assign weights based on the LLM's confidence in each variant. A variant phrased as a direct synonym of the original gets weight 1.0; a distant paraphrase gets weight 0.6. The weighted formula: `RRF_score(doc) = Σ_variant  weight_v / (k + rank_in_variant(doc))`. Published evaluations show modest gains over unweighted RRF on legal and medical corpora; the benefit on general corpora is smaller. Start with unweighted; add weighting only if you have ground-truth to calibrate against.
+
+For the acquire-gov knowledge graph (Wed's KG/CG topic), agentic RAG becomes agentic graph traversal + RAG fusion: the agent queries the KG for structured entity relationships (which evaluators are assigned to which proposals, which amendments affect which solicitations), then fuses those structured results with unstructured clause text from the vector store. The fusion step uses RRF across the two result sets. Senior FDEs building the Wed multi-agent evaluator flow should design the tool surface so the agent can call both `graph_query` and `clause_search` and merge results deterministically.
+
+</details>
+
+Last verified: 2026-06-06

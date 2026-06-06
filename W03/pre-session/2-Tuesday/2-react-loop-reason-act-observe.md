@@ -21,26 +21,28 @@ sources:
   - url: https://www.ibm.com/think/topics/react-agent
     retrieved_on: 2026-05-26
     recency_category: foundation-stable
-last_verified: 2026-05-26
+last_verified: 2026-06-06
 ---
 
 # ReAct loop = Reason + Act + Observe
 
+> [!NOTE]
+> **From earlier:** Mon's ADR committed the agent topology and named the HITL #3 boundary. Today you implement the loop that topology describes.
+
 ## 1. Learning Objectives
 
-- By the end of this reading, the learner can describe the three phases of a ReAct loop (Reason, Act, Observe) and the termination condition for a tool-using LLM agent.
-- By the end of this reading, the learner can articulate the distinction between a **workflow** (predefined code paths) and an **agent** (LLM-directed control flow) using Anthropic's framing.
-- By the end of this reading, the learner can map a concrete business problem onto a ReAct loop and identify which step belongs in which phase.
-- By the end of this reading, the learner can explain why interleaving reasoning traces with actions reduces hallucination compared to plain chain-of-thought.
-- By the end of this reading, the learner can identify three common failure modes in a ReAct loop and the defensive design choices that mitigate them.
+- Describe the three phases of a ReAct loop (Reason, Act, Observe) and the termination condition for a tool-using LLM agent
+- Articulate the distinction between a **workflow** (predefined code paths) and an **agent** (LLM-directed control flow) using Anthropic's framing
+- Map a concrete business problem onto a ReAct loop and identify which step belongs in which phase
+- Explain why interleaving reasoning traces with actions reduces hallucination compared to plain chain-of-thought
 
 ## 2. Introduction
 
-ReAct — short for **Reason + Act** — is the loop behind most production tool-using LLM agents shipped between 2023 and 2026. It was introduced by Yao et al. in a 2022 paper ("ReAct: Synergizing Reasoning and Acting in Language Models," arXiv 2210.03629) that showed an LLM which **interleaves** a written reasoning trace with structured tool calls outperforms a model doing pure chain-of-thought on knowledge-intensive QA, and outperforms imitation-learned agents on interactive decision-making benchmarks like ALFWorld and WebShop by 30+ absolute percentage points.
+ReAct — short for **Reason + Act** — is the loop behind most production tool-using LLM agents. Yao et al. (arXiv 2210.03629) showed that an LLM which **interleaves** a written reasoning trace with structured tool calls outperforms pure chain-of-thought on knowledge-intensive tasks. A chain-of-thought model can invent a fact and build on it; ReAct forces each step to be grounded in an actual observation, so the loop self-corrects.
 
-The intuition is simple. A pure chain-of-thought model reasons in a closed loop and tends to drift — it has no way to check its work against the world. A pure scripted agent has no way to recover when the script's assumptions are wrong. ReAct splits the difference: at each step, the model writes a short reason ("I should look up the customer's order history first"), takes one structured action (a tool call), and is then shown the action's observation (the tool's return value) before deciding what to do next. The reasoning gives the model a place to plan; the action gives it a way to ground its plan in reality; the observation closes the feedback loop.
+In 2026 the pattern ships in LangGraph's `create_react_agent`, LangChain v1.0's `create_agent`, Bedrock Agents, and OpenAI Assistants — the simplest recoverable, debuggable tool-using loop. Anthropic's "Building effective agents" guide recommends it first, before adding orchestration.
 
-In 2026 the pattern shows up in nearly every agent framework — LangGraph's `create_agent`, the LangChain v1.0 agent runtime, OpenAI's Assistants API, AWS Bedrock Agents, Microsoft Semantic Kernel — because it is the simplest useful shape that gets you a recoverable, debuggable tool-using loop. It is the baseline you depart from when you need something more elaborate (planner-executor, multi-agent supervisor, evaluator-optimizer), and the shape Anthropic's "Building effective agents" guide recommends you reach for first, before adding any orchestration.
+For `acquire-gov` intake-triage: receive the proposal payload → reason about what to check → call a read tool → observe the result → loop until triage is complete or an anomaly triggers escalation.
 
 ## 3. Core Concepts
 
@@ -48,67 +50,52 @@ In 2026 the pattern shows up in nearly every agent framework — LangGraph's `cr
 
 A ReAct loop has three phases per turn:
 
-- **Reason.** The model emits a short natural-language thought about what to do next. In Claude on Bedrock this lands in the assistant message's `text` content block; in some frameworks it is parsed from a `Thought:` prefix.
-- **Act.** The model emits a structured action — in modern tool-use APIs, a `tool_use` content block carrying `{name, input}`. The host runtime executes the named tool with the given input.
-- **Observe.** The host runtime returns the tool's result to the model on the next turn, as a `tool_result` content block on a `user`-role message. The model now sees what happened and can reason again.
+- **Reason.** The model emits a short natural-language thought about what to do next. In Claude on Bedrock this lands in the assistant message's `text` content block.
+- **Act.** The model emits a `tool_use` content block carrying `{name, input}`. The host runtime executes the named tool.
+- **Observe.** The host returns the tool's result as a `tool_result` content block on a `user`-role message. The model sees what happened and can reason again.
 
-The loop terminates when the model decides it has enough information to answer. For Claude on Bedrock the termination signal is `stop_reason: "end_turn"` with no further `tool_use` content blocks. For most other providers the signal is similar — the assistant emits a final message with no tool calls.
+The loop terminates when the model decides it has enough information. For Claude on Bedrock the termination signal is `stop_reason: "end_turn"` with no further `tool_use` content blocks.
 
-### 3.2 Workflow vs agent — the line that matters
+> [!TIP]
+> **Workflow vs agent — the line that matters.** Anthropic draws a sharp distinction: a **workflow** orchestrates LLMs through predefined code paths the developer enumerated. An **agent** lets the LLM dynamically direct its own control flow. Intake-triage is on the agent side — the CO did not pre-specify "always check amendments first"; the model decides based on the payload.
 
-Anthropic's "Building effective agents" guide draws a sharp line. A **workflow** is a system where the LLM and tools are orchestrated through predefined code paths — the developer decided "first do A, then if X do B else do C." An **agent** is a system where the LLM dynamically directs its own control flow and tool usage. ReAct is the canonical agent shape; prompt-chaining, routing, parallelization, and orchestrator-workers are workflow shapes.
+### 3.2 Three budgets every production loop must set
 
-The choice is not aesthetic. Workflows are predictable, cheap, and easy to evaluate. Agents are flexible and necessary when you cannot enumerate the paths up front — but they are also more expensive, harder to test, and harder to bound. The guide's repeated advice is to find the simplest solution that works and only escalate to an agent when a workflow cannot handle the variance in inputs.
-
-### 3.3 Reason traces reduce hallucination
-
-The Yao et al. paper's headline result is that interleaving reasoning and acting beats both pure reasoning (CoT) and pure acting (Act-only) on HotpotQA and Fever fact-verification tasks. The mechanism: in CoT the model can confidently invent a fact and then build on it; in ReAct the model has to ground each reasoning step in an action's observation, and the observation can contradict the invention. Modern agent frameworks preserve this property — even when the "reason" step is implicit (Claude tool-use, OpenAI tools), the model is still being shown each tool's actual return value before its next decision.
-
-### 3.4 Termination, max-steps, and the budget question
-
-A ReAct loop without a step cap can loop forever. Production agents apply a hard `max_iterations` (or `recursion_limit` in LangGraph) — typical defaults are 10 to 25 iterations. If the cap fires before the model emits a final answer, the runtime returns a structured "incomplete" result. The cap is one of three budgets you must set explicitly:
+A ReAct loop without a step cap can loop forever. Set all three budgets explicitly:
 
 | Budget | What it bounds | Typical default |
 |--------|----------------|-----------------|
-| `max_iterations` | Number of Reason-Act-Observe cycles | 10–25 |
-| Token budget | Total prompt + completion tokens across the run | Model-dependent; often 100K–200K |
+| `max_iterations` / `recursion_limit` | Reason-Act-Observe cycles | 10–25 |
+| Token budget | Total prompt + completion tokens across the run | 100K–200K |
 | Wall-clock timeout | Time before the runtime kills the run | 60–300 seconds |
 
-A loop that has not terminated by any of these is a bug in your prompt or your tool surface — not a sign you should raise the cap.
+A loop that has not terminated by any of these is a prompt or tool-surface bug — not a sign you should raise the cap.
 
-### 3.5 Frameworks that ship ReAct as a primitive
+### 3.3 Reason traces reduce hallucination
 
-- **LangChain v1.0** ships `create_agent` as the default agent factory. It builds a graph-based agent runtime on LangGraph and exposes middleware slots for HITL, summarization, and PII redaction.
-- **LangGraph** ships both `create_react_agent` (a prebuilt) and the lower-level `StateGraph` + `ToolNode` + `tools_condition` primitives. Most production teams start with the prebuilt and migrate to hand-rolled when they need custom routing.
-- **OpenAI Assistants API**, **Bedrock Agents**, and **Vertex AI Agent Builder** all wrap a ReAct loop under the hood; the developer hands them tools and a prompt and the loop is run server-side.
+The Yao et al. headline result: interleaving reasoning and acting beats both pure CoT and pure Act-only on HotpotQA and FEVER fact-verification. In pure CoT the model invents facts and builds on them unchecked. In ReAct every step is grounded in an actual tool observation — the observation can contradict the invented fact before the next decision is made.
 
-The point of using a framework is that the loop, tool-result threading, and termination logic are handled for you. The point of understanding the loop is that when something breaks, you can read the trace and tell which phase failed.
+> [!IMPORTANT]
+> **Structured tool errors, not silent nulls.** Return `{"error": "not_found", "id": "..."}` when a tool call fails — the model can reason about the failure and try a different path. Silent `None` returns let the model hallucinate around the gap.
 
 ## 4. Generic Implementation
 
-A minimal ReAct loop in plain Python (no framework) against a generic chat-completions tool-use API:
+A minimal ReAct loop in plain Python, illustrating termination, structured error handling, and the observe phase:
 
 ```python
 def run_react_loop(initial_message: str, tools: list, max_iterations: int = 10) -> str:
-    """
-    Generic ReAct loop. Terminates when the model returns no tool calls
-    or when max_iterations is exceeded.
-    """
+    """Generic ReAct loop. Terminates when no tool calls or max_iterations hit."""
     messages = [{"role": "user", "content": initial_message}]
 
     for step in range(max_iterations):
-        # --- Reason + Act phase ---
-        # The model produces a "thought" (text) and zero-or-more tool calls.
+        # Reason + Act: model produces text thought + zero-or-more tool_use blocks
         response = llm_call(messages=messages, tools=tools)
 
-        # --- Termination check ---
-        # No tool calls means the model is done reasoning.
+        # Termination: no tool calls means the model is done
         if not response.tool_calls:
             return response.content
 
-        # --- Observe phase ---
-        # Echo the assistant turn back, then thread each tool result onto the
-        # next user turn. Order matters: tool_use_id pairs each result to its call.
+        # Observe: echo assistant turn, thread each tool result back
         messages.append({"role": "assistant", "content": response.content})
 
         tool_results = []
@@ -121,8 +108,7 @@ def run_react_loop(initial_message: str, tools: list, max_iterations: int = 10) 
                     "content": result,
                 })
             except Exception as e:
-                # Structured error — let the model reason about the failure
-                # rather than silently dropping it.
+                # Structured error — model reasons about the failure, not around it
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": call.id,
@@ -132,78 +118,82 @@ def run_react_loop(initial_message: str, tools: list, max_iterations: int = 10) 
 
         messages.append({"role": "user", "content": tool_results})
 
-    # Hit the iteration cap without terminating — return a structured incomplete.
-    return {"status": "incomplete", "reason": "max_iterations_reached", "messages": messages}
+    # Hit the cap — return structured incomplete, not an exception
+    return {"status": "incomplete", "reason": "max_iterations_reached"}
 ```
 
-Three things in this snippet earn their place:
-
-1. **Termination check happens before any tool-result threading.** If the model emits no tool calls, the loop is done; do not push an empty user turn.
-2. **Tool errors are structured and observable.** Catching exceptions silently and returning `None` lets the model hallucinate around the gap; returning a structured error message lets the model reason about the failure and try a different tool or give up cleanly.
-3. **The cap exits with structured incompleteness**, not an exception. Callers can inspect `messages` to see what the agent tried before timing out.
+Termination check fires before any tool-result threading. Errors are structured and observable. The cap exits with structured incompleteness — callers can inspect `messages` to see what the agent tried.
 
 ## 5. Real-world Patterns
 
-### 5.1 Fintech — fraud-investigation copilot (Stripe Radar Assistants, Anthropic case studies)
+**Fintech fraud investigation (Stripe Radar Assistants).** The agent reasons about a flag, acts by calling `get_card_history`, `get_ip_reputation`, `get_device_fingerprint`, and observes before deciding escalate or auto-clear. Writes (`block_card`, `notify_customer`) route through human-approval middleware — the ReAct shape traverses a multi-signal graph that a static rules engine cannot express.
 
-Fintech vendors use ReAct loops to investigate flagged transactions. The agent reasons about a flag ("this transaction is from a new IP with a 3am timestamp on a card that usually transacts in business hours"), acts by calling tools (`get_card_history`, `get_ip_reputation`, `get_device_fingerprint`), and observes the results before deciding whether to escalate or auto-clear. The investigation runs against frozen account state; writes (`block_card`, `notify_customer`) are routed through a human-approval middleware step. The ReAct shape lets the model traverse a multi-signal graph that a static rules engine would struggle to express cleanly.
+**E-commerce root-cause (Shopify Sidekick).** Sidekick answers "why did my conversion drop?" by reasoning a hypothesis, acting on analytics tools, and observing until it attributes the drop to a concrete factor. The loop terminates when the agent produces a natural-language explanation citing specific tool observations.
 
-### 5.2 E-commerce — Shopify Sidekick
+**Healthcare clinical-decision support (Glass Health, Hippocratic AI).** The reason step articulates a differential hypothesis; the act step queries labs and imaging; the observe step grounds the next hypothesis in patient data. Writes are forbidden — every recommendation routes through a human approval queue.
 
-Shopify's Sidekick assistant uses an agentic loop to answer merchant questions ("why did my conversion drop yesterday?"). Reason: form a hypothesis. Act: call analytics tools to pull session funnels, ad-spend data, inventory state. Observe: read the numbers. Loop until the model can attribute the drop to a concrete factor (a misconfigured discount, an out-of-stock SKU, a regional ad-spend cut). The loop terminates when the agent produces a natural-language explanation citing the specific tool observations — making the answer auditable.
-
-### 5.3 Healthcare — clinical-decision-support copilots
-
-Healthcare LLM products (Hippocratic AI, Glass Health, Abridge) use ReAct over EHR-query tools. The reason step lets the model articulate a differential diagnosis hypothesis; the act step queries labs, imaging, prior notes; the observe step grounds the next hypothesis in actual patient data. The pattern is constrained — these systems typically forbid write actions entirely and require human sign-off on any recommendation — but the loop shape is the same.
-
-### 5.4 Gaming — NPC behaviour and player-support agents
-
-Game studios (Inworld AI, Replica, Riot's player-support assistants) use ReAct for two distinct cases: NPC behaviour where the agent reasons about player state and acts via game-engine APIs, and player-support where the agent investigates account-status reports across services. The latter is structurally identical to the fintech investigation pattern — different data, same loop.
+> [!NOTE]
+> **Cross-domain signal.** All three patterns share the acquire-gov constraint: writes are small in number, named for their effect, and deliberately slow-pathed through a gate. Reads are plentiful and cheap.
 
 ## 6. Best Practices
 
-- **Cap iterations and tokens explicitly; never trust the model to self-limit.** A runaway ReAct loop is the single most common production bug.
-- **Make tool errors observable to the model.** Return structured error strings, not nulls. The model can then reason about the failure and either retry, switch tools, or give up.
-- **Separate reads from writes in the tool surface.** Writes should be small in number, idempotent, and explicitly named; reads can be plentiful. The reason-act-observe pattern makes write-side mistakes more expensive because the model can chain them.
-- **Trace every step.** Without a per-step trace (LangSmith, LangFuse, OpenTelemetry GenAI spans, or a homegrown log), you cannot debug why the model picked a tool or misinterpreted a result.
-- **Prefer the framework's prebuilt loop until you have a reason to hand-roll it.** Hand-rolled loops are educational; production teams that hand-roll spend their time reimplementing termination, retries, and result-threading that the framework already gets right.
-- **Test the termination condition explicitly.** Write a test that asserts the loop exits when the model returns no tool calls, and another that asserts the loop exits cleanly at `max_iterations`.
+- Cap iterations, tokens, and wall-clock timeout explicitly — never trust the model to self-limit
+- Make tool errors observable — return structured error strings, not nulls or silent exceptions
+- Separate reads from writes — writes named for business effect, idempotent, slow-pathed through a gate
+- Trace every step — without per-step trace you cannot debug tool selection decisions
+- Prefer the framework's prebuilt loop until you have a measured reason to hand-roll it
+
+> [!WARNING]
+> **Anti-pattern: `react-loop-no-termination`.** A ReAct loop without an explicit `max_iterations` cap and token budget will run until the model's context overflows or the runtime OOMs. This is the single most common production bug in agentic systems. Every loop needs all three budgets set before it leaves `main` — iteration cap, token budget, wall-clock timeout.
 
 ## 7. Hands-on Exercise
 
-**Whiteboard exercise (15 min).** You are designing a ReAct agent that answers the question *"is this software package safe to use in our project?"* for an open-source security-review tool. The agent has the following tools:
+You are designing a ReAct agent for an open-source security-review tool. Tools: `get_package_metadata(name, version)` (read), `get_known_vulnerabilities(name, version)` (read), `get_dependency_tree(name, version)` (read), `scan_dependency_tree_for_cves(tree)` (read), `submit_review(package_id, verdict, rationale)` (write). Draw the loop for input *"is `requests==2.31.0` safe?"* — first Reason, first Act, Observation, continue to termination. State your `max_iterations`, `tokens_max`, and `wall_clock_timeout` values.
 
-- `get_package_metadata(name, version) -> PackageInfo` (read)
-- `get_known_vulnerabilities(name, version) -> list[CVE]` (read)
-- `get_dependency_tree(name, version) -> Tree` (read)
-- `scan_dependency_tree_for_cves(tree) -> list[CVE]` (read)
-- `submit_review(package_id, verdict, rationale) -> ReviewResult` (write)
+> [!NOTE]
+> **Self-check** (30 s — answer mentally before expanding)
+>
+> 1. What is the termination signal for Claude on Bedrock's tool-use loop?
+> 2. Name one consequence of catching a tool exception silently and returning `None`.
 
-Draw the ReAct loop on a whiteboard for the input *"is `requests==2.31.0` safe?"* Specifically:
+<details>
+<summary>Show answers</summary>
 
-1. Write a plausible **first Reason** step the model might emit.
-2. Write the **first Act** call (tool name and arguments).
-3. Write the **Observation** the host returns (you may invent realistic-looking data).
-4. Write the **second Reason** step.
-5. Continue until you reach termination.
-6. State what your `max_iterations`, `tokens_max`, and `wall_clock_timeout` budgets should be, and why.
+1. `stop_reason: "end_turn"` with no further `tool_use` content blocks in the assistant response.
+2. The model has no observation to reason from, so it may hallucinate a plausible result — inventing that the tool succeeded when it did not. The structured-error pattern gives the model a real signal to work with.
 
-**What good looks like.** A solution shows three or four loop iterations, with the model walking from metadata → known CVEs → dependency tree → scanning dependencies → submitting a verdict. The final iteration calls `submit_review` and the loop terminates. Iteration cap is small (5–8), timeout is short (30–60s), and the writer can explain why the write tool only fires once. Bonus: the writer identifies that `submit_review` needs an idempotency key (covered in topic 4) so the model cannot accidentally submit twice.
+</details>
 
 ## 8. Key Takeaways
 
-- **What are the three phases of a ReAct loop, and what is the termination condition?** (Reason, Act, Observe; terminate when the model emits no tool calls.)
-- **Why is a ReAct agent more robust than chain-of-thought on knowledge-intensive tasks?** (The Observe phase grounds each reasoning step in real tool output, breaking the hallucinate-and-build-on-it pattern.)
-- **When should you reach for a workflow instead of an agent?** (When the control flow is enumerable up front — workflows are cheaper, more predictable, easier to evaluate.)
-- **What budgets must every production ReAct loop set?** (Max iterations, token budget, wall-clock timeout — all three.)
-- **What does the loop do when a tool errors?** (Return a structured error to the model so it can reason about the failure; never silently swallow.)
+- **Three phases:** Reason → Act → Observe; loop terminates on `end_turn` with no tool calls
+- **Workflow vs agent:** workflows follow predefined paths; agents let the LLM direct its own control flow
+- **Reason traces ground each step** in real tool output, breaking the hallucinate-and-build-on-it pattern
+- **All three budgets** must be set before the loop leaves `main` — iterations, tokens, wall-clock
+- **Structured errors, not nulls** — the model can only reason about a failure it can see
 
-## Sources
+## 9. Sources
 
-1. [ReAct: Synergizing Reasoning and Acting in Language Models (Yao et al., arXiv 2210.03629)](https://arxiv.org/abs/2210.03629) — retrieved 2026-05-26
-2. [Building Effective Agents (Anthropic)](https://www.anthropic.com/research/building-effective-agents) — retrieved 2026-05-26
-3. [LangChain v1.0 Agents documentation](https://docs.langchain.com/oss/python/langchain/agents) — retrieved 2026-05-26
-4. [LangChain and LangGraph Agent Frameworks Reach v1.0 Milestones (LangChain blog, Oct 2025)](https://blog.langchain.com/langchain-langgraph-1dot0/) — retrieved 2026-05-26
-5. [What is a ReAct Agent? (IBM Think)](https://www.ibm.com/think/topics/react-agent) — retrieved 2026-05-26
+<details>
+<summary>References — retrieved via /web-research per D-046</summary>
 
-Last verified: 2026-05-26
+- https://arxiv.org/abs/2210.03629 — ReAct: Synergizing Reasoning and Acting in Language Models (Yao et al.) — retrieved 2026-05-26 — foundation-stable
+- https://www.anthropic.com/research/building-effective-agents — Building Effective Agents (Anthropic) — retrieved 2026-05-26 — hot-tech
+- https://docs.langchain.com/oss/python/langchain/agents — LangChain v1.0 Agents documentation — retrieved 2026-05-26 — hot-tech
+- https://blog.langchain.com/langchain-langgraph-1dot0/ — LangChain and LangGraph 1.0 (LangChain blog, Oct 2025) — retrieved 2026-05-26 — hot-tech
+- https://www.ibm.com/think/topics/react-agent — What is a ReAct Agent? (IBM Think) — retrieved 2026-05-26 — foundation-stable
+
+</details>
+
+<details>
+<summary>Deeper dive — for senior FDEs (optional, not in reading budget)</summary>
+
+The Yao et al. paper's ablation tables are worth reading: Act-only (no reasoning trace) outperforms CoT-only on interactive decision-making (ALFWorld, WebShop) but loses on knowledge-intensive QA (HotpotQA, FEVER). ReAct is the only shape that wins on both benchmark families. The mechanism: interactive tasks require adapting to observations; knowledge tasks require checking invented facts. ReAct provides both affordances simultaneously.
+
+For the LangGraph-specific implementation: `create_react_agent` in LangGraph v1.0 wraps `StateGraph` + `ToolNode` + `tools_condition`. The condition routes: if the model returned `tool_use` blocks → `ToolNode`; if it returned `end_turn` → the response node. Senior FDEs should read the LangGraph source for `tools_condition` to understand what "termination" looks like at the graph-conditional level — it is a Python `Literal["tools", "__end__"]` type annotation, not a sentinel value.
+
+LangGraph's `recursion_limit` (default 25 supersteps) is the `max_iterations` equivalent. Raising it above 50 is a yellow flag; above 100 is a red flag. If you find yourself needing more than 25 iterations, the likely root cause is a tool that returns insufficient information, forcing re-retries, or a prompt that does not give the model a clear termination criterion.
+
+</details>
+
+Last verified: 2026-06-06

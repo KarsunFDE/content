@@ -4,7 +4,7 @@ day: Tue
 topic_slug: idempotency-for-state-mutating-tools
 topic_title: "Idempotency for state-mutating tools"
 parent_overview: W03/pre-session/2-Tuesday/1-DailyTopicOverview.md
-estimated_minutes: 10
+estimated_minutes: 12
 sources:
   - url: https://stripe.com/blog/idempotency
     retrieved_on: 2026-05-26
@@ -21,110 +21,65 @@ sources:
   - url: https://aloknecessary.github.io/blogs/idempotency-distributed-systems/
     retrieved_on: 2026-05-26
     recency_category: foundation-stable
-last_verified: 2026-05-26
+last_verified: 2026-06-06
 ---
 
 # Idempotency for state-mutating tools
 
+> [!NOTE]
+> **From earlier:** Topic 3 established that write tools carry an `idempotency_key` argument and document the contract in their description. This topic explains *why* that matters and *how* to implement it correctly.
+
 ## 1. Learning Objectives
 
-- By the end of this reading, the learner can define idempotency in the context of a tool-using LLM agent and explain why it is non-optional for state-mutating tools.
-- By the end of this reading, the learner can list three implementation shapes (unique-constraint column, conditional insert, Redis SETNX) and choose between them based on scope.
-- By the end of this reading, the learner can explain why LangGraph's checkpoint/resume model makes idempotency a correctness requirement rather than a hygiene preference.
-- By the end of this reading, the learner can construct an idempotency key from a meaningful business tuple and articulate why the key shape matters as much as the storage shape.
-- By the end of this reading, the learner can identify three common failure modes — replay drift, key collision across tenants, and expiration mismatches — and the defences against each.
+- Define idempotency in the context of a tool-using LLM agent and explain why it is non-optional for state-mutating tools
+- List three implementation shapes (unique-constraint column, conditional insert, Redis SETNX) and choose between them based on scope
+- Explain why LangGraph's checkpoint/resume model makes idempotency a correctness requirement rather than a hygiene preference
+- Construct an idempotency key from a meaningful business tuple and articulate why key shape matters as much as storage shape
 
 ## 2. Introduction
 
-"Idempotent" — from the Latin for "same power" — describes an operation whose effect is the same whether you run it once or a hundred times. `set_temperature(72)` is idempotent; `increment_temperature_by(2)` is not. In tool-using LLM agent systems, idempotency is the property that lets you retry a tool call after a network blip, a runtime crash, or a checkpoint replay without producing duplicate state.
+"Idempotent" — same power — describes an operation whose effect is identical whether you run it once or a hundred times. `set_temperature(72)` is idempotent; `increment_temperature_by(2)` is not. In tool-using agent systems, idempotency lets you retry a tool call after a network blip, a runtime crash, or a checkpoint replay without duplicate side-effects.
 
-The need is structural. Agents run inside non-deterministic runtimes — LangGraph can crash mid-graph and resume from the last checkpoint, an HTTP-level retry can re-fire a tool call after a timeout, a multi-agent supervisor can re-dispatch a worker that already completed. Without idempotency, any of these produces duplicate side effects: two payments, two notifications, two database rows, two audit entries. The fintech industry learned this lesson hard enough that Stripe built idempotency into the API surface as a first-class header and has published the canonical engineering write-up on the pattern.
+The need is structural: LangGraph can crash mid-graph and resume from checkpoint; HTTP retries re-fire on timeout; a multi-agent supervisor can re-dispatch a worker that already completed. Without idempotency each scenario produces duplicate state — two routing rows, two CO notifications, two audit entries.
 
-This reading walks the contract, the three storage shapes, the key-construction question, and the LangGraph-specific reason this discipline applies at agent-tool boundaries even more than at conventional API boundaries.
+In `acquire-gov` intake-triage, `route_to_evaluators` and `escalate_to_co` are both state-mutating. A duplicate `route_to_evaluators` row tells the audit trail two evaluator assignments happened — per FAR record-keeping, the audit trail is *lying*, a bigger violation than the original double-write.
 
 ## 3. Core Concepts
 
 ### 3.1 What "idempotent" means precisely
 
-A tool call is idempotent if calling it twice with the same inputs (including the same idempotency key) produces:
-
-- **The same observable side effect** — one row inserted, not two; one email sent, not two; one notification fired, not two.
-- **The same response payload** — the second call returns the result of the first, not an error and not a fresh execution.
-- **The same downstream effects** — if the tool emits an event, the event is emitted once, not twice.
-
-Note "with the same inputs" is doing real work. Different inputs with the same key is a different problem (parameter mismatch — error) and different inputs with different keys is just two distinct operations.
+A tool call is idempotent if calling it twice with the same inputs produces: the same observable side-effect (one row, not two), the same response payload (second call returns first call's result), and the same downstream effects (event fires once). "With the same inputs" is doing real work — different inputs with the same key is a parameter mismatch error, not a replay.
 
 ### 3.2 Why agents make this harder than ordinary APIs
 
-In a normal client-server API, retries happen at one layer: the client sees a timeout and retries. The client controls when to retry.
+In a normal client-server API, retries happen at one layer: the client sees a timeout and retries. In an agent runtime, retries stack at three layers simultaneously:
 
-In an agent runtime, retries happen at three layers simultaneously:
+| Layer | Mechanism | Example |
+|-------|-----------|---------|
+| Model | ReAct loop sees a `tool_result` error, decides to retry | Same `route_to_evaluators` call with same args |
+| HTTP | Service mesh or Bedrock retries on 5xx / timeout | Tool endpoint called twice |
+| Graph runtime | LangGraph resumes from checkpoint, re-executes the node | Entire node re-runs including all tool calls |
 
-1. **The model.** A ReAct loop that sees a `tool_result` error can decide to retry the call with the same arguments.
-2. **The HTTP layer.** Bedrock, the FastAPI gateway, or an internal service mesh may retry on 5xx or timeouts.
-3. **The graph runtime.** LangGraph (and similar durable runtimes) checkpoints state between supersteps; on resume, a node may re-execute from the beginning. Any tool call inside that node fires again unless the call itself is idempotent.
+The LangGraph documentation is explicit: when a graph resumes from an `interrupt()` or a crash, **the entire node re-executes from the beginning**. Any tool call inside that node fires again unless the call itself is idempotent.
 
-The LangGraph documentation makes this explicit: when a graph resumes from an `interrupt()` or a crash, **the entire node re-executes from the beginning**. Therefore, developers must ensure that any logic placed before the interrupt — including API requests that incur charges or database writes — is idempotent.
+> [!IMPORTANT]
+> **LangGraph checkpoint/resume is a correctness requirement, not a hygiene preference.** Thu's deep-dive wires `interrupt()` and `Command(resume=...)`. If your write tools are not idempotent before Thu, graph resumption will create duplicate side-effects. Fix it today.
 
 ### 3.3 The three storage shapes
 
-**Shape 1 — Idempotency-key column with a unique constraint.** The most common pattern. The tool accepts an explicit `idempotency_key` argument. The mutating table has a `UNIQUE` constraint on that column. A duplicate call fails the constraint; the application catches the violation, looks up the prior result, and returns it.
+**Shape 1 — Unique-constraint column.** Most common. Tool accepts `idempotency_key`; table has `UNIQUE` on it. Duplicate call fails the constraint; app catches, looks up prior result, returns it. Durable, auditable; requires schema migration if added later.
 
-```sql
-CREATE TABLE dispatch_log (
-    id            BIGSERIAL PRIMARY KEY,
-    vehicle_id    UUID NOT NULL,
-    job_id        UUID NOT NULL,
-    idempotency_key TEXT NOT NULL,
-    result_json   JSONB NOT NULL,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (idempotency_key)
-);
-```
+**Shape 2 — Conditional insert.** `WHERE NOT EXISTS` on a natural business tuple. No extra column, but intentional re-submission after the first attempt requires a new key.
 
-Strengths: durable, survives application restart, easy to audit. Weaknesses: requires a schema migration if you bolt it on later.
-
-**Shape 2 — Conditional insert (no extra column).** Use a natural business tuple as the dedupe key. A `WHERE NOT EXISTS` clause prevents the second insert.
-
-```sql
-INSERT INTO dispatch_log (vehicle_id, job_id, dispatched_at)
-SELECT $1, $2, now()
-WHERE NOT EXISTS (
-    SELECT 1 FROM dispatch_log WHERE vehicle_id = $1 AND job_id = $2
-);
-```
-
-Strengths: no extra column. Weaknesses: the dedupe scope is the business tuple — you cannot retry the *same* (vehicle, job) on purpose after the first attempt succeeded.
-
-**Shape 3 — Redis SETNX with TTL.** When the write spans multiple tables, services, or systems that cannot share a SQL constraint, use Redis as a deduplication store.
-
-```
-SETNX idempotency:{key} 1 EX 86400
-```
-
-If the SET succeeded the key was new; proceed. If it failed the key was seen; look up the stored result. Strengths: cross-service, no migration. Weaknesses: TTL-bounded (typical 24 hours, matching Stripe's window); requires the Redis instance to be highly available.
+**Shape 3 — Redis SETNX with TTL.** `SETNX idempotency:{key} 1 EX 86400`. Cross-service, no migration — but TTL-bounded (24 h) and requires Redis HA.
 
 ### 3.4 Key construction — the underrated half
 
-The storage shape is mechanical; the key construction is where most idempotency systems break. Three rules:
-
-- **Use a meaningful business tuple, not a random UUID.** A UUID supplied by the model is just a token — if the model retries with a *new* UUID, you get duplicates. A key constructed from `(operation, primary_entity_id, secondary_entity_id, intent_hash)` is reproducible across retries: the model regenerates the same key from the same context.
-- **Hash variable-shape inputs.** If the tool input includes a list (e.g., `evaluator_ids: [a, b, c]`), sort and hash before keying. Otherwise `[a, b, c]` and `[b, a, c]` are different keys for the same logical operation.
-- **Namespace by tenant.** In a multi-tenant system, prefix the key with `tenant_id`. A collision across tenants is the worst kind of bug — it both leaks data and lies on the audit trail.
-
-A good key looks like: `dispatch:fleet_42:vehicle_9f0d:job_42a1:v1` — readable, reproducible, tenant-scoped, and versioned so you can rotate the keying scheme without breaking existing entries.
-
-### 3.5 What the tool should return on a replay
-
-When a duplicate call arrives, the tool should return the **same response** the original call returned — same status, same payload, same headers. Stripe's API surfaces this with an `Idempotent-Replayed: true` header so clients can detect replays. Agents do not strictly need the flag (the model rarely cares whether it caused the effect or just observed it), but logging the replay is essential for debugging.
-
-### 3.6 Parameter-mismatch errors
-
-A subtle case: the second call uses the same idempotency key but **different parameters**. Stripe treats this as an error and returns 400 — the assumption is that the key was reused by mistake and silently succeeding would corrupt state. Most production idempotency layers do the same. The exception is when the key is constructed deterministically from the parameters, in which case parameter mismatch implies key mismatch — they cannot both happen.
+Storage shape is mechanical; key construction is where most systems break. Three rules: use a **meaningful business tuple** (not a model-generated UUID — a new UUID on retry defeats the check); **hash variable-shape inputs** (sort `evaluator_ids` before hashing); **namespace by tenant** (`agency_id` prefix — cross-tenant collisions leak data and falsify the audit trail). Example: `agency_42:route:proposal_9f0d:evals_sha256abc:v1`.
 
 ## 4. Generic Implementation
 
-A generic idempotent write tool for a logistics dispatch system, using Shape 1 (unique-constraint column) and a deterministically constructed key.
+Shape 1 (unique-constraint column) with deterministic key construction:
 
 ```python
 import hashlib
@@ -133,106 +88,115 @@ from uuid import UUID
 from typing import Optional
 import psycopg
 
-class DispatchVehicleInput(BaseModel):
-    vehicle_id: UUID
-    job_id: UUID
-    eta_minutes: int = Field(ge=0, le=720)
-    # The key may be passed by the model; if absent, derived deterministically below.
+class RouteToEvaluatorsInput(BaseModel):
+    proposal_id: UUID
+    evaluator_ids: list[UUID]
     idempotency_key: Optional[str] = None
 
-def build_key(inp: DispatchVehicleInput, *, tenant_id: str, version: str = "v1") -> str:
-    """
-    Construct a deterministic, tenant-scoped, versioned idempotency key.
-    Same inputs → same key, every time.
-    """
-    base = f"{tenant_id}:dispatch:{inp.vehicle_id}:{inp.job_id}:{version}"
-    return base  # short enough to use directly; hash if you need fixed length
+def build_key(inp: RouteToEvaluatorsInput, *, agency_id: str, version: str = "v1") -> str:
+    # Sort evaluator list so order doesn't affect the key
+    sorted_evals = sorted(str(e) for e in inp.evaluator_ids)
+    evals_hash = hashlib.sha256("|".join(sorted_evals).encode()).hexdigest()[:16]
+    return f"{agency_id}:route:{inp.proposal_id}:{evals_hash}:{version}"
 
-def dispatch_vehicle(inp: DispatchVehicleInput, *, conn: psycopg.Connection, tenant_id: str):
-    key = inp.idempotency_key or build_key(inp, tenant_id=tenant_id)
-
+def route_to_evaluators(inp: RouteToEvaluatorsInput, *, conn: psycopg.Connection, agency_id: str):
+    key = inp.idempotency_key or build_key(inp, agency_id=agency_id)
     with conn.transaction():
-        # Try the insert; UNIQUE constraint on idempotency_key catches duplicates.
         try:
             row = conn.execute(
                 """
-                INSERT INTO dispatch_log
-                  (tenant_id, vehicle_id, job_id, eta_minutes, idempotency_key, result_json)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO routing_log
+                  (agency_id, proposal_id, evaluator_ids, idempotency_key, result_json)
+                VALUES (%s, %s, %s, %s, %s)
                 RETURNING id, result_json
                 """,
-                (tenant_id, inp.vehicle_id, inp.job_id, inp.eta_minutes, key, '{"status":"dispatched"}'),
+                (agency_id, str(inp.proposal_id),
+                 [str(e) for e in inp.evaluator_ids], key, '{"status":"routed"}'),
             ).fetchone()
-            return {"status": "ok", "id": row[0], "replayed": False, **row[1]}
+            return {"status": "ok", "id": row[0], "replayed": False}
         except psycopg.errors.UniqueViolation:
-            # Second call with the same key — look up and return the original result.
             row = conn.execute(
-                "SELECT id, result_json FROM dispatch_log WHERE idempotency_key = %s",
+                "SELECT id, result_json FROM routing_log WHERE idempotency_key = %s",
                 (key,),
             ).fetchone()
-            return {"status": "ok", "id": row[0], "replayed": True, **row[1]}
+            return {"status": "ok", "id": row[0], "replayed": True}
 ```
 
-Three things worth noticing:
-
-1. **The key is derived deterministically from inputs**, not generated as a UUID. A model that retries with the same arguments produces the same key automatically — no special prompt needed.
-2. **The catch-and-lookup branch returns `replayed: True`**. The tool's caller (the host runtime; the LangSmith trace; the audit log) sees the replay explicitly.
-3. **The transaction wraps both branches**. If the lookup fails for any reason after the constraint violation (e.g., row was deleted in the meantime), the whole thing rolls back.
+Key is derived deterministically from inputs. The catch-and-lookup branch returns `replayed: True`. The transaction wraps both branches.
 
 ## 5. Real-world Patterns
 
-### 5.1 Fintech — Stripe's reference implementation
+> [!TIP]
+> **Match TTL to your retry storm window.** Stripe's 24-hour window covers even slow CDN retry queues. For `acquire-gov` write tools, 24 hours is the safe default.
 
-Stripe pioneered the idempotency-key pattern for payment APIs. The client supplies an `Idempotency-Key` header on POST requests; Stripe stores the request payload and the eventual response keyed by that header for 24 hours; any retry within the window returns the stored response with `Idempotent-Replayed: true`. The 24-hour window matches their retry-policy guidance — beyond that, the failure mode is operator-decided, not client-decided. The blog post "Designing robust and predictable APIs with idempotency" remains the canonical write-up.
+**Fintech (Stripe).** Clients supply `Idempotency-Key`; Stripe stores request + response for 24 hours; retries return the stored response with `Idempotent-Replayed: true`. The canonical reference implementation.
 
-### 5.2 E-commerce — Shopify's order-create idempotency
+**E-commerce (Shopify order-create).** Key derived from `(cart_id, payment_session_id)` — stable across retries — not a frontend-regenerated UUID. Guards against the checkout retry storm on CDN edge hiccups.
 
-Shopify's order-create endpoint accepts an idempotency key to prevent duplicate orders during the checkout retry storm that happens whenever a CDN edge hiccups. Their published guidance: the key should be derived from `(cart_id, payment_session_id)` — both stable across retries — rather than from a client-generated UUID that the merchant's frontend might regenerate on a page refresh.
+**Healthcare (Surescripts, CoverMyMeds).** Duplicate fill requests are a DEA EPCS regulatory issue. Keys are `(prescription_id, fill_sequence_number, signature_hash)` — stable across retries, unique across fills.
 
-### 5.3 Healthcare — pharmacy fill-request systems
-
-US pharmacy fulfillment networks (Surescripts, CoverMyMeds) treat duplicate fill requests as a controlled-substances compliance issue, not just a hygiene one. Their idempotency keys are constructed from `(prescription_id, fill_sequence_number, signature_hash)` — three fields that are stable across retries but unique across distinct fills. Duplicate suppression is a regulatory requirement under DEA EPCS rules.
-
-### 5.4 Cloud infrastructure — AWS SDKs
-
-Most AWS write APIs accept a `ClientRequestToken` (or equivalent name — `ClientToken`, `IdempotencyToken`) that serves the same role. The AWS Well-Architected Framework's REL04-BP04 lists "Make mutating operations idempotent" as a top-line reliability practice, on the grounds that distributed systems will retry, and the only defence is to make each retry safe by design.
+> [!NOTE]
+> **Cross-domain signal.** The `acquire-gov` federal-audit-trail requirement maps directly to the DEA EPCS story: in both cases, a duplicate write falsifies the official record of what occurred.
 
 ## 6. Best Practices
 
-- **Construct the key deterministically from inputs.** A model-generated UUID is not a key; it is a token, and tokens drift on retry.
-- **Namespace keys by tenant.** Cross-tenant collisions are the worst-case bug — they both leak data and falsify the audit trail.
-- **Wrap the insert and the lookup in one transaction.** Otherwise a race condition between the constraint violation and the lookup can return inconsistent results.
-- **Match TTL to retry policy.** 24 hours is the Stripe default; choose the shortest window that covers your longest realistic retry storm.
-- **Log replays explicitly.** The replayed call is informationally different from the original — your trace store should be able to tell them apart, even if the response payload is identical.
-- **Reject parameter mismatches.** A second call with the same key and different parameters is a bug, not a retry. Return an error rather than silently succeeding.
+- Construct the key deterministically from inputs — model-generated UUIDs drift on retry
+- Namespace by tenant — cross-tenant collisions leak data and falsify the audit trail
+- Wrap insert and lookup in one transaction — race between constraint violation and lookup returns inconsistent results
+- Match TTL to retry policy — 24 h is Stripe's default; choose the shortest window that covers your longest retry storm
+- Log replays explicitly — a replayed call is informationally different from the original
+
+> [!WARNING]
+> **Anti-pattern: `state-mutation-without-idempotency-key`.** A write tool that accepts no idempotency key cannot be safely retried under any of the three retry layers (model, HTTP, graph runtime). When LangGraph's checkpoint/resume re-executes a node containing such a tool, the result is guaranteed duplicate side-effects. Every write tool in the intake-triage flow must have an idempotency key before Thursday's LangGraph deep-dive.
 
 ## 7. Hands-on Exercise
 
-**Code exercise (15 min).** You are implementing the `send_invoice_email` tool for a SaaS billing system. The model can call this tool to send an invoice to a customer. Requirements:
+You are implementing `send_invoice_email` for a SaaS billing system. Requirements: (1) calling it twice with the same `(invoice_id, customer_email)` sends exactly one email; (2) the idempotency window is 7 days; (3) the tool returns `{"status": "sent" | "replayed", "message_id": str}`; (4) the same `invoice_id` for different tenants must not collide. Write the Pydantic input model, the `build_key()` function, and the tool body using a Postgres unique-constraint table.
 
-1. The tool must be idempotent — calling it twice with the same `(invoice_id, customer_email)` pair sends exactly one email.
-2. The idempotency window must be 7 days (invoices can be retried up to a week later).
-3. The tool returns `{"status": "sent" | "replayed", "message_id": str}`.
-4. The tenant boundary must be enforced — the same `invoice_id` belonging to different tenants must not collide.
+> [!NOTE]
+> **Self-check** (30 s — answer mentally before expanding)
+>
+> 1. Why is a model-generated UUID a poor idempotency key?
+> 2. What does the tool return when the same key is submitted a second time?
 
-Write the Pydantic input model, the `build_key()` function, and the tool body using a Postgres unique-constraint table. Add a one-line comment explaining how a model-generated retry with the same arguments produces the same key.
+<details>
+<summary>Show answers</summary>
 
-**What good looks like.** A solution constructs the key as `{tenant_id}:invoice_email:{invoice_id}:{sha256(customer_email)}` (note the email hash — emails can be PII), uses a `UNIQUE` constraint on the key column, and returns `replayed: True` on the duplicate path. Bonus: the solution sets a 7-day TTL via a periodic cleanup job on the table rather than relying on Redis TTLs (which fight with database-of-record auditing).
+1. A UUID generated by the model is a random token. On retry the model may generate a *new* UUID — different key, different constraint check — so the duplicate insert succeeds and produces two side-effects. A key derived deterministically from the business tuple (invoice_id, tenant_id) is the same on every retry regardless of what the model generates.
+2. The same response payload as the original call, ideally with a `replayed: True` flag so observability tooling (LangSmith, audit log) can distinguish the replay from the original. The underlying operation does not execute again.
+
+</details>
 
 ## 8. Key Takeaways
 
-- **Why is idempotency non-optional for state-mutating tools called by LLM agents?** (Three retry layers stack — model, HTTP, graph runtime — and any one of them can fire the same call twice.)
-- **What are the three storage shapes for idempotency, and how do you choose?** (Unique-constraint column for the common case; conditional insert when you cannot add a column; Redis SETNX for cross-service or cross-table scope.)
-- **Why does deterministic key construction matter more than the storage shape?** (Because a non-deterministic key — like a model-generated UUID — drifts on retry and lets duplicates through.)
-- **What does the tool return on a replay?** (The same response as the original call, ideally with a `replayed: True` flag so observability can tell them apart.)
-- **What makes LangGraph specifically require this discipline?** (Checkpoint/resume re-executes the entire failing node from the start, including any tool calls before the interrupt.)
+- **Three retry layers stack** — model, HTTP, graph runtime — any one can fire the same write tool twice without idempotency
+- **Three storage shapes:** unique-constraint column (most common), conditional insert (no extra column), Redis SETNX (cross-service)
+- **Deterministic key construction matters more than storage shape** — a non-deterministic key lets duplicates through regardless of storage
+- **Replay returns the original result** with a `replayed` flag — the tool consumer gets consistency, the trace gets visibility
+- **LangGraph checkpoint/resume specifically requires this** — the entire failing node re-executes from the start on resume
 
-## Sources
+## 9. Sources
 
-1. [Designing robust and predictable APIs with idempotency (Stripe)](https://stripe.com/blog/idempotency) — retrieved 2026-05-26
-2. [Idempotent requests — Stripe API Reference](https://docs.stripe.com/api/idempotent_requests) — retrieved 2026-05-26
-3. [REL04-BP04 Make mutating operations idempotent — AWS Well-Architected Reliability Pillar](https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_prevent_interaction_failure_idempotent.html) — retrieved 2026-05-26
-4. [Durable execution — LangGraph docs](https://docs.langchain.com/oss/python/langgraph/durable-execution) — retrieved 2026-05-26
-5. [Idempotency in Distributed Systems: Design Patterns Beyond 'Retry Safely'](https://aloknecessary.github.io/blogs/idempotency-distributed-systems/) — retrieved 2026-05-26
+<details>
+<summary>References — retrieved via /web-research per D-046</summary>
 
-Last verified: 2026-05-26
+- https://stripe.com/blog/idempotency — Designing robust and predictable APIs with idempotency (Stripe) — retrieved 2026-05-26 — foundation-stable
+- https://docs.stripe.com/api/idempotent_requests — Idempotent requests (Stripe API Reference) — retrieved 2026-05-26 — foundation-stable
+- https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_prevent_interaction_failure_idempotent.html — REL04-BP04 Make mutating operations idempotent (AWS Well-Architected) — retrieved 2026-05-26 — foundation-stable
+- https://docs.langchain.com/oss/python/langgraph/durable-execution — Durable execution (LangGraph docs) — retrieved 2026-05-26 — hot-tech
+- https://aloknecessary.github.io/blogs/idempotency-distributed-systems/ — Idempotency in Distributed Systems: Design Patterns Beyond 'Retry Safely' — retrieved 2026-05-26 — foundation-stable
+
+</details>
+
+<details>
+<summary>Deeper dive — for senior FDEs (optional, not in reading budget)</summary>
+
+Parameter-mismatch errors are a subtle edge case: the second call uses the same idempotency key but **different parameters**. Stripe treats this as a 400 error — the assumption is that the key was reused by mistake and silently succeeding would corrupt state. Most production idempotency layers do the same. The exception: when the key is constructed deterministically from the parameters, parameter mismatch implies key mismatch — they cannot both happen simultaneously.
+
+For Shape 3 (Redis SETNX), the atomicity guarantee depends on a single Redis instance or Redis Cluster with appropriate quorum. In a distributed Redis setup, the SETNX can race: two concurrent calls may both observe the key as absent before either writes it. Redlock (the Redis distributed lock algorithm) addresses this but adds complexity. For most `acquire-gov` write tools, Shape 1 (Postgres unique constraint) is the correct choice — it inherits Postgres's ACID guarantees and survives application restarts.
+
+For the `evaluate` or `score` operations (Wed's multi-agent flow), consider whether the key should include a `run_id` or `attempt_number` to allow intentional re-scoring of the same proposal. If the business rule is "one score per proposal per evaluator," the key is `(agency_id, proposal_id, evaluator_id)`; if re-scoring on new information is allowed, the key must include a version or timestamp component.
+
+</details>
+
+Last verified: 2026-06-06

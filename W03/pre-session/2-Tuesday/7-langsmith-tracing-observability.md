@@ -4,7 +4,7 @@ day: Tue
 topic_slug: langsmith-tracing-observability
 topic_title: "LangSmith tracing — observability for tool-using agents"
 parent_overview: W03/pre-session/2-Tuesday/1-DailyTopicOverview.md
-estimated_minutes: 8
+estimated_minutes: 12
 sources:
   - url: https://docs.langchain.com/langsmith/observability-quickstart
     retrieved_on: 2026-05-26
@@ -21,201 +21,179 @@ sources:
   - url: https://www.ai.cc/blogs/how-to-use-langsmith-2026-complete-guide/
     retrieved_on: 2026-05-26
     recency_category: hot-tech
-last_verified: 2026-05-26
+last_verified: 2026-06-06
 ---
 
 # LangSmith tracing — observability for tool-using agents
 
+> [!NOTE]
+> **From earlier:** Topics 2–6 built the loop, the tool schemas, the idempotency contracts, the compaction policy, and the RAG patterns. None of that is debuggable at scale without a trace. This topic wires the observability layer that makes the rest inspectable.
+
 ## 1. Learning Objectives
 
-- By the end of this reading, the learner can describe what a LangSmith trace contains (parent + nested runs, token counts, latencies, prompts, responses, tool calls and results).
-- By the end of this reading, the learner can configure tracing with the three environment variables that wire it on, and identify when a fourth (regional endpoint) is required.
-- By the end of this reading, the learner can articulate why tracing is a correctness substrate for multi-agent debugging — not a cosmetic add-on.
-- By the end of this reading, the learner can describe the three tracing mechanisms (env-var auto-tracing for LangChain/LangGraph code, the `@traceable` decorator, the context-manager) and choose between them.
-- By the end of this reading, the learner can identify three discipline practices (per-call metadata, prompt versioning, evaluator-attached evaluations) that turn raw traces into debuggable history.
+- Describe what a LangSmith trace contains and how the run-tree structure maps to a multi-agent topology
+- Configure tracing with the three required env vars and identify when the fourth (regional endpoint) is required
+- Choose between env-var auto-tracing, `@traceable` decorator, and trace context manager
+- Identify three practices (per-call metadata, prompt versioning, evaluator suite) that turn raw traces into debuggable history
 
 ## 2. Introduction
 
-LangSmith is LangChain's observability and evaluation platform. It captures a structured trace of every step an LLM application takes — every model call, every tool invocation, every nested chain or graph node — and stores those traces in a queryable, replayable, taggable interface. Without an observability layer of some kind, debugging a tool-using agent is guesswork: when the model picks the wrong tool, gives a wrong answer, or loops on itself, you have no record of *what* it saw at decision time. With a trace, you can walk the chain backward and answer "what was the model's input when it made that decision?"
+LangSmith captures a structured trace of every step an LLM application takes — every model call, every tool invocation, every nested graph node — in a queryable, replayable, taggable interface. Without this, debugging a tool-using agent is guesswork: when the model picks the wrong tool, you have no record of what it saw at decision time.
 
-The discipline matters most when agents grow beyond a single ReAct loop. A multi-agent supervisor delegating to workers, a graph-based agent with conditional branching, a long-running session with compaction events — these systems have far too many internal state transitions to debug by reading logs. LangSmith — and equivalent platforms like LangFuse, Phoenix, Helicone, and Honeycomb's GenAI tracing — solves the same class of problem that distributed-tracing solved for microservices a decade earlier. The pattern travels: instrument the boundaries, render the trace as a tree, walk the tree to debug.
+Per **D-031**, W3 Tue is LangSmith's first real programme appearance — not stubs, real traces in the cohort workspace. Today's single-agent traces become Wed's baseline for debugging the multi-agent supervisor. If traces are not appearing by 10:55, fix the `.env` before continuing — Wed and Thu observability depend on it.
 
-This reading is the wiring-discipline reading. Three env vars, two checks, four practices.
+LangSmith is a **preview and integration point** here only. Deeper evaluation workflows — dataset management, evaluator suites, regression testing — are W5 material. Today: wire it, verify it, attach metadata.
 
 ## 3. Core Concepts
 
 ### 3.1 What a trace contains
 
-A LangSmith trace is a tree of **runs**. The root run is the top-level invocation (an agent call, a chain run, a graph invoke). Children are everything that happened inside — every model call, every tool call, every nested chain, every conditional branch evaluation. Each run captures:
-
-- **Inputs** — the exact prompt or arguments passed in.
-- **Outputs** — the exact response or return value.
-- **Metadata** — token counts, latency, model name, cost, error status.
-- **Tags** — optional labels you can attach for filtering ("user_id=42", "experiment=v3", "env=prod").
-- **References** — links to evaluator results, dataset rows, and prompt versions.
-
-Walking this tree end-to-end shows you exactly what the system did and what it saw at each step.
+A LangSmith trace is a tree of **runs**. The root run is the top-level invocation; children are every model call, tool call, nested graph node, and branch evaluation inside it. Each run captures: inputs (exact prompt or args), outputs (exact response or return value), metadata (tokens, latency, model, cost, error), tags, and evaluator references. Walking this tree shows exactly what the system did and saw at each step.
 
 ### 3.2 The three (or four) environment variables
 
-LangChain and LangGraph applications wire LangSmith on by setting environment variables. With these in place, every invocation auto-traces — no code change required.
-
 ```bash
-LANGSMITH_API_KEY=ls-...                        # your workspace API key
-LANGSMITH_TRACING=true                          # turns the auto-tracer on
-LANGSMITH_PROJECT=my-agent-project              # buckets these traces
-LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com   # ONLY if your workspace is in a non-US region
+LANGSMITH_API_KEY=ls-...                         # workspace API key
+LANGSMITH_TRACING=true                           # turns the auto-tracer on
+LANGSMITH_PROJECT=acquire-gov-w3                 # buckets today's traces
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com  # ONLY for non-US regions
 ```
 
-The regional endpoint is the easy thing to miss. A workspace provisioned in the EU region will silently fail authentication with the default US endpoint — the API key isn't recognised. Set `LANGSMITH_ENDPOINT` explicitly when in any region other than US.
+The regional endpoint is easy to miss. An EU-region workspace silently fails authentication against the default US endpoint — the API key is not recognised. Set `LANGSMITH_ENDPOINT` explicitly for any non-US region.
 
-### 3.3 Three tracing mechanisms — pick the right one
+> [!IMPORTANT]
+> **Load env vars before the LangChain import.** LangChain's auto-tracer reads them at import time. Setting them after import is silently a no-op. This is the most common "why aren't my traces appearing?" failure mode.
 
-LangSmith offers three ways to capture traces:
+### 3.3 Three tracing mechanisms
 
-**Mechanism A — Environment-variable auto-tracing.** When the env vars are set, any code path that runs through LangChain or LangGraph is auto-traced. No code changes. This is the default for LangChain/LangGraph applications.
+**Mechanism A — Environment-variable auto-tracing.** Any code path through LangChain or LangGraph is auto-traced when the env vars are set. No code changes. This is the default.
 
-**Mechanism B — The `@traceable` decorator.** Wrap any Python function. Every call traces; the function's arguments and return value are captured. Use this for code outside the LangChain/LangGraph runtime — utility functions, custom integrations, data-prep steps that you still want in the trace.
+**Mechanism B — `@traceable` decorator.** Wrap any Python function outside LangChain/LangGraph — utility functions, custom integrations — to get it into the trace tree alongside the agent's model calls.
 
-```python
-from langsmith import traceable
+**Mechanism C — Trace context manager.** Ad-hoc instrumentation for third-party SDK calls you cannot decorate.
 
-@traceable(run_type="tool", name="get_account_status")
-def get_account_status(account_id: str) -> dict:
-    return account_repo.find_one(account_id)
-```
+Choose A by default, layer B for non-LangChain business logic, reach for C only when neither fits.
 
-**Mechanism C — The trace context manager.** Wrap a code block. Useful for ad-hoc instrumentation when neither auto-tracing nor `@traceable` fits — for example, instrumenting a third-party SDK call that you cannot decorate.
+### 3.4 Tracing as the substrate for multi-agent debugging
 
-Choose A by default, layer B for non-LangChain functions, and reach for C only when neither covers the surface.
+In a single-agent loop, raw logs suffice. Multi-agent systems destroy that affordance: three parallel workers produce three interleaved streams with no attribution. LangSmith renders this as a tree — supervisor root, three child subtrees, each with its own model and tool calls. Click into the failing subtree to see exactly what input it received. Wire tracing before building the agent.
 
-### 3.4 Tracing is the substrate for multi-agent debugging
+### 3.5 Three practices that turn raw traces into debuggable history
 
-In a single-agent ReAct loop, you could in principle debug from raw logs — there's one model, one trace of tool calls, one linear sequence. Multi-agent systems destroy that affordance. A supervisor agent dispatches three worker agents in parallel; one returns a contradictory result; the supervisor weighs and resolves; the user sees an aggregated answer. With raw logs you have three interleaved log streams and no way to tell which worker said what when.
-
-LangSmith renders this as a tree: the supervisor's root run with three child run subtrees (one per worker), each subtree containing the worker's own model calls and tool calls, plus the supervisor's resolution step. You click into the subtree of the worker that returned a contradictory result and see exactly what it was given as input.
-
-This is why the discipline of "wire tracing first, then build the agent" matters. Without traces, multi-agent debugging is guesswork. With traces, it's a tree walk.
-
-### 3.5 What you do with a trace — three practices
-
-Three practices turn raw traces into actively debuggable history:
-
-- **Attach per-call metadata.** When you invoke the agent, pass run metadata: `user_id`, `session_id`, `feature_flag`, `experiment_arm`. This lets you filter traces in the LangSmith UI to "all the runs for user 42 where feature X was on" — vital when reproducing a user-reported bug.
-- **Pin prompt versions.** LangSmith treats prompts as first-class versioned assets. When you change a prompt, you bump the version; every trace records which prompt version it ran. When a regression shows up, you can attribute it.
-- **Attach evaluators.** LangSmith's evaluation harness lets you run datasets against your agent and score the runs with custom evaluators. Trace + evaluation + dataset together form a regression-testing loop that's far stronger than ad-hoc QA.
-
-The 2026 LangSmith Engine release adds an AI-assisted layer that analyses traces and suggests fixes for failing or expensive runs — useful as a second pass, but no substitute for the three practices above.
-
-### 3.6 Replay — testing a fix without re-running production
-
-The replay feature lets you take an existing trace, swap the model or the prompt, and re-run the exact same input. This is the right way to validate a candidate fix to a prompt regression — you take the trace where the agent misbehaved, replay it under the new prompt, see if the new prompt produces the right behaviour on the same input. No need to re-trigger the user-flow that produced the original trace.
+- **Attach per-call metadata** — `user_id`, `session_id`, `feature_flag`. Filters to "all runs for user 42 where feature X was on" when reproducing a bug.
+- **Pin prompt versions** — LangSmith treats prompts as versioned assets; every trace records which version ran. Regressions become attributable.
+- **Attach evaluators** — trace + evaluation + dataset form a regression loop stronger than ad-hoc QA. Full evaluator workflow is W5; today wire traces and metadata.
 
 ## 4. Generic Implementation
 
-A generic Python service that uses both env-var auto-tracing (for the LangChain code) and the `@traceable` decorator (for adjacent business logic).
+A FastAPI service using both env-var auto-tracing (for LangChain code) and the `@traceable` decorator (for adjacent business logic):
 
 ```python
 import os
 from langsmith import traceable
 
-# --- Environment configuration ---
-# Set these in your .env or runtime environment before imports.
+# Load env vars BEFORE any LangChain/LangGraph import
 # os.environ["LANGSMITH_API_KEY"] = "ls-..."
 # os.environ["LANGSMITH_TRACING"] = "true"
-# os.environ["LANGSMITH_PROJECT"] = "support-bot-prod"
-# # EU region only: os.environ["LANGSMITH_ENDPOINT"] = "https://eu.api.smith.langchain.com"
+# os.environ["LANGSMITH_PROJECT"] = "acquire-gov-w3"
 
-# --- Business-logic helper, decorated for tracing ---
-@traceable(run_type="tool", name="resolve_customer")
-def resolve_customer(email: str) -> dict:
-    # Custom lookup against the CRM — not a LangChain primitive,
-    # but we want it in the trace tree so we can see what the agent saw.
-    return crm.lookup_by_email(email)
+@traceable(run_type="tool", name="resolve_agency")
+def resolve_agency(agency_id: str) -> dict:
+    # Custom CRM lookup — not a LangChain primitive,
+    # but we want it in the trace tree alongside the agent's model calls.
+    return agency_repo.find_one(agency_id)
 
-# --- Agent invocation, with run metadata for traceability ---
-def handle_support_message(user_id: str, session_id: str, message: str) -> str:
-    customer = resolve_customer(user_id)   # captured in trace via @traceable
+def handle_intake_triage(agency_id: str, session_id: str, proposal_payload: dict) -> dict:
+    agency = resolve_agency(agency_id)  # captured in trace via @traceable
     response = agent.invoke(
-        {"messages": [{"role": "user", "content": message}]},
+        {"messages": [{"role": "user", "content": str(proposal_payload)}]},
         config={
             "metadata": {
-                "user_id": user_id,
+                "agency_id": agency_id,
                 "session_id": session_id,
-                "customer_tier": customer["tier"],
+                "proposal_id": proposal_payload.get("proposal_id"),
             },
-            "tags": ["support-bot", "prod"],
+            "tags": ["intake-triage", "w3-tue", "prod"],
         },
     )
     return response["messages"][-1].content
 ```
 
-Three things worth noticing:
-
-1. **The env vars are loaded before the LangChain import.** LangChain's auto-tracer reads them at import time; setting them after import is silently a no-op.
-2. **`resolve_customer` is decorated** so it appears in the trace tree alongside the agent's model calls. Without the decorator the CRM lookup is invisible.
-3. **Metadata and tags are passed at invoke time.** This lets you filter LangSmith traces by `user_id` or `customer_tier` in the UI — essential for reproducing a specific user's report.
+Env vars load before import. `resolve_agency` is decorated so it appears in the trace tree alongside the agent's model calls. Metadata and tags are passed at invoke time for UI filtering.
 
 ## 5. Real-world Patterns
 
-### 5.1 Customer-support copilots — Zendesk, Intercom
+**Customer-support copilots (Zendesk, Intercom).** Every conversation tagged with the ticket ID. When a user reports a bad answer, engineers filter to that ticket and walk the trace. Replay tests prompt changes against the exact failing conversation.
 
-Support-bot vendors lean heavily on LangSmith (or equivalent) because the failure mode "bot gave a wrong answer to user X" is impossible to debug without the original prompt context. Pattern: every conversation is tagged with the ticket ID at invoke time; when a user reports a bad answer, support engineers filter LangSmith to that ticket and walk the trace tree. Replay lets them test prompt changes against the exact failing conversation before deploying.
+**Code assistants (Cursor, Cognition Labs).** A single request produces dozens of nested runs across planner + worker agents. The trace tree is the only practical debug surface.
 
-### 5.2 Code assistants — Cursor, Cognition Labs, Replit Agent
+> [!NOTE]
+> **Two trace audiences.** LangSmith = *technical* trace (tokens, latencies, payloads) for engineers. `AuditEvent` table = *regulatory* trace (who acted, with what authority) for the CO and OIG. Never conflate them.
 
-Code assistants run multi-agent pipelines where a planner agent dispatches to specialised workers (file-edit, search, test-run, lint-fix). The trace tree is the only practical debug surface — a single user request produces dozens of nested runs across multiple workers. Cognition Labs and Cursor have both publicly described how tracing is non-negotiable for shipping multi-agent code-modification systems.
+**Regulated industries.** LangSmith answers "why did the agent decide X?"; AuditEvent answers "was it authorised?"
 
-### 5.3 Healthcare clinical-decision-support tools
-
-Clinical-decision-support tools have a compliance need that makes tracing load-bearing: every model-driven recommendation must be reconstructible after the fact for medical-record integrity. The trace becomes the evidentiary substrate — what the model saw, what it recommended, what tools it called. The same shape applies in regulated industries generally (legal, finance, aviation).
-
-### 5.4 Search-and-research products — Perplexity, You.com
-
-Multi-step research assistants run query planning, parallel retrieval, source ranking, and answer synthesis as nested runs. The trace tree exposes the full provenance chain — which sources informed which claims. The provenance trace becomes the user-facing "show your work" feature, not just an internal debug tool.
+> [!TIP]
+> **Replay as a first-class debug tool.** Swap model or prompt, re-run the exact same input — validate a fix against the historical failing trace before deploying.
 
 ## 6. Best Practices
 
-- **Wire the env vars before the LangChain import.** Auto-tracing reads them at import time.
-- **Set `LANGSMITH_PROJECT` per environment.** Prod, staging, and dev traces should land in separate projects to prevent dataset pollution.
-- **Attach `user_id`, `session_id`, and at least one experimental-arm tag at every invocation.** Without these, filtering to reproduce a specific bug is unmanageable.
-- **Pin prompt versions to traces.** When prompts are versioned, regressions become attributable.
-- **Layer `@traceable` on non-LangChain business logic.** Anything you would want to see in the trace tree should be in the trace tree.
-- **Build a small evaluator suite early.** Even five hand-curated regression cases run nightly is better than zero.
-- **Treat replay as a first-class debug tool.** Test prompt and model changes against historical traces before deploying.
-- **Be intentional about PII.** Traces capture full inputs and outputs — if those contain sensitive data, either redact at the boundary or use a self-hosted observability stack.
+- Wire env vars before the LangChain import — auto-tracing reads them at import time
+- Set `LANGSMITH_PROJECT` per environment — prod, staging, dev traces stay separate
+- Attach `user_id`, `session_id`, and at least one tag at every invocation
+- Layer `@traceable` on non-LangChain business logic you want in the trace tree
+- Be intentional about PII — traces capture full inputs/outputs; redact at the boundary or use self-hosted observability
+
+> [!WARNING]
+> **Anti-pattern: `tracing-as-afterthought`.** Adding observability after the agent is built means the first production failures have no trace history to debug from. Wire LangSmith before the first tool call, not after the first incident. In multi-agent systems, retrofitting tracing is harder — metadata contracts must be designed with the topology, not bolted on afterward.
 
 ## 7. Hands-on Exercise
 
-**Code exercise (15 min).** You are wiring LangSmith into an existing FastAPI service that hosts a single-agent customer-onboarding workflow. The service has:
+Wire LangSmith into a FastAPI service with a `POST /agent/onboard` route, a LangGraph agent, and two helpers (`load_user_profile`, `check_eligibility`) outside LangChain. Tasks: (1) set the three (or four) env vars; (2) add `@traceable` to both helpers; (3) attach `user_id`, `session_id`, and a `prod` tag at invoke time; (4) write a one-paragraph runbook note for how an on-call engineer finds the trace for a specific user complaint.
 
-- An invoke route `POST /agent/onboard` that accepts `{user_id, message}`.
-- A LangGraph agent assembled at startup.
-- Two business-logic helpers (`load_user_profile`, `check_eligibility`) currently not in LangChain.
+> [!NOTE]
+> **Self-check** (30 s — answer mentally before expanding)
+>
+> 1. Why must env vars be set before the LangChain import, not after?
+> 2. When do you use `@traceable` rather than relying on env-var auto-tracing?
 
-Tasks:
+<details>
+<summary>Show answers</summary>
 
-1. Add the three (or four — note the region question) environment variables to the service config.
-2. Add a `@traceable` decorator to both business-logic helpers.
-3. Modify the invoke route to attach `user_id` and `session_id` metadata plus a `prod` tag to the agent invocation.
-4. Write a one-paragraph note for the runbook explaining how an on-call engineer would find the trace for a specific user complaint.
+1. LangChain's auto-tracer initialises its instrumentation at import time by reading the environment variables. If they are set after the import, the tracer has already initialised with no-op stubs and will silently produce no traces for the rest of the process lifetime.
+2. Use `@traceable` for any function that runs outside the LangChain/LangGraph runtime — custom business logic, third-party SDK calls, database lookups — that you want visible in the trace tree alongside the agent's model calls. Without the decorator, these functions are invisible in the trace even though they may be doing significant work the agent depends on.
 
-**What good looks like.** A solution sets env vars in the service config (not in code), decorates the two helpers with `@traceable(run_type="tool", name=...)`, attaches metadata in the `config=` argument of `agent.invoke`, and the runbook note explains the LangSmith filter syntax for finding traces by `user_id`. Bonus: the writer flags that `load_user_profile` may include PII and proposes either a redaction step or a self-hosted alternative.
+</details>
 
 ## 8. Key Takeaways
 
-- **What does a LangSmith trace contain?** (A tree of runs — root + nested children — each with inputs, outputs, tokens, latency, and optional metadata/tags.)
-- **What four env vars matter, and which one is easy to miss?** (`LANGSMITH_API_KEY`, `LANGSMITH_TRACING`, `LANGSMITH_PROJECT`; plus `LANGSMITH_ENDPOINT` for non-US regions — the easy miss.)
-- **Why is tracing the substrate for multi-agent debugging?** (Multiple interleaved agent traces are unparsable from raw logs; the trace tree disentangles them.)
-- **When do you use `@traceable` vs env-var auto-tracing?** (Env-var for LangChain/LangGraph code; `@traceable` for business logic you want in the trace tree alongside it.)
-- **What three practices turn raw traces into actively debuggable history?** (Per-call metadata; prompt versioning; attached evaluators with a small regression suite.)
+- **Trace = tree of runs** — root + nested children, each with inputs, outputs, tokens, latency, metadata, tags
+- **Three env vars** (`API_KEY`, `TRACING=true`, `PROJECT`) wire it; `LANGSMITH_ENDPOINT` required for non-US regions — easy to miss
+- **Substrate for multi-agent debugging** — interleaved raw logs are unparsable; the trace tree disentangles them
+- **Env-var auto-tracing for LangChain/LangGraph; `@traceable` for adjacent business logic**
+- **Per-call metadata + prompt versioning** turn raw traces into debuggable history — full evaluator workflow is W5
 
-## Sources
+## 9. Sources
 
-1. [Tracing quickstart — LangChain docs](https://docs.langchain.com/langsmith/observability-quickstart) — retrieved 2026-05-26
-2. [LangSmith: AI Agent & LLM Observability Platform](https://www.langchain.com/langsmith/observability) — retrieved 2026-05-26
-3. [Debugging Deep Agents with LangSmith (LangChain blog)](https://blog.langchain.com/debugging-deep-agents-with-langsmith/) — retrieved 2026-05-26
-4. [LangSmith Evaluation — LangChain docs](https://docs.langchain.com/langsmith/evaluation) — retrieved 2026-05-26
-5. [How to Use LangSmith in 2026: Complete Tracing & Debugging Guide](https://www.ai.cc/blogs/how-to-use-langsmith-2026-complete-guide/) — retrieved 2026-05-26
+<details>
+<summary>References — retrieved via /web-research per D-046</summary>
 
-Last verified: 2026-05-26
+- https://docs.langchain.com/langsmith/observability-quickstart — Tracing quickstart (LangChain docs) — retrieved 2026-05-26 — hot-tech
+- https://www.langchain.com/langsmith/observability — LangSmith: AI Agent & LLM Observability Platform — retrieved 2026-05-26 — hot-tech
+- https://blog.langchain.com/debugging-deep-agents-with-langsmith/ — Debugging Deep Agents with LangSmith (LangChain blog) — retrieved 2026-05-26 — hot-tech
+- https://docs.langchain.com/langsmith/evaluation — LangSmith Evaluation (LangChain docs) — retrieved 2026-05-26 — hot-tech
+- https://www.ai.cc/blogs/how-to-use-langsmith-2026-complete-guide/ — How to Use LangSmith in 2026: Complete Tracing & Debugging Guide — retrieved 2026-05-26 — hot-tech
+
+</details>
+
+<details>
+<summary>Deeper dive — for senior FDEs (optional, not in reading budget)</summary>
+
+The 2026 LangSmith Engine release adds an AI-assisted analysis layer that examines traces and suggests fixes for failing or expensive runs. Useful as a second pass — it can surface patterns across hundreds of traces that a human reviewer would miss (e.g., "the agent consistently calls get_solicitation twice per run when the amendment is from agency X"). Do not rely on it as a substitute for the three practices (per-call metadata, prompt versioning, evaluator suite) — those are the data that make the AI-assisted analysis useful.
+
+For the acquire-gov regulatory-compliance story: the LangSmith trace and the `AuditEvent` table serve different audit audiences. The LangSmith trace is for the engineering team — it is the debug substrate. The `AuditEvent` table is for the contracting officer and OIG — it is the regulatory record. Never conflate the two. The `AuditEvent` schema is governed by FAR record-keeping requirements; the LangSmith trace schema is governed by engineering convenience. If you store PII or FOUO material in LangSmith, you need either a self-hosted deployment or explicit data-handling agreements with LangChain. For Cohort #1, the cohort workspace key is provisioned by the instructor — do not store actual proposal content in traces; use stub payloads.
+
+Prompt versioning in LangSmith works via the Hub: `hub.pull("my-org/my-prompt:v3")` returns a prompt object that also records the version identifier in any traces that use it. Senior FDEs building the W5 evaluation harness should design prompt identifiers as `{org}/{name}:{semver}` from day one — retrofitting versioning after the fact requires re-tagging historical traces, which is tedious and error-prone.
+
+</details>
+
+Last verified: 2026-06-06
