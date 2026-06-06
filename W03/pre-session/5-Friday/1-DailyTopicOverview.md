@@ -4,91 +4,109 @@ week: W03
 day: Fri
 phase: Agentic (Gate)
 topic: "Phase 1 Gate prep + W4 modernization arc preview"
-estimated_total_minutes: 35
-last_verified: 2026-05-23
+estimated_total_minutes: 31
+last_verified: 2026-06-06
 fde_situations: [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12]
 tech: [cumulative — LLM essentials + RAG + agentic]
 sources_research_briefs: [research/phase-1-defense-shape.md]
 author: instructor
+hitl_touchpoint: null
 ---
 
-# Pre-session reading — Phase 1 Gate prep + W4 modernization arc preview
+# Friday Pre-Session — Phase 1 Defense + W4 Modernization Preview
 
-Week 3, Day Fri (Gate Day). Estimated total time on task: ~35 minutes. **Short on purpose** — Friday is gate day; the cohort has been reading + building all week. Tonight is for closing the loop, not opening new threads. Last verified: 2026-05-23.
+> [!NOTE]
+> **From earlier:** Thu wired the formal `interrupt()` boundary — the hard gate where no default, no proposal, and no auto-proceed is permitted. Today you defend the chain you built across five HITL touchpoints.
 
-## 1. Why this matters
+## 1. What you'll learn today
 
-Friday morning is the **Mid-Programme Gate** — Phase 1 (W1 Thu – W3 Fri) concludes. Each pair gets 45 minutes to demo + defend the pair-project as built across three weeks of AI Adoption. Friday afternoon is the Mid-Program Retro that drives W4 Mon's §0 plan retrospective. By Monday morning your pair will be planning Phase 2 (Modernization) against a brownfield that the *whole programme* now uses (acquire-gov) — not just your pair-project.
+By the end of this pre-session reading you'll be able to:
 
-Tonight's read is short and prescriptive. Do the gate prep. Skim the W4 framing. Sleep.
+- Articulate the Phase 1 Defense format: demo slot, Agency CIO Q&A, OIG Q&A, per-individual architecture defense.
+- Name the five HITL touchpoints you are accountable to defend (#1 W1 Fri, #2 W2 Thu, #3 W3 Mon, #4 W3 Wed, #5 W3 Thu) and what each one protects.
+- Describe how Phase-1 discoveries (what went wrong, what surprised you) become Phase-2 modernization scope on Monday morning (D-029, D-036).
+- Recognize the most common defense anti-patterns — especially citation without reading and HITL hand-waving — before the panel opens.
 
-## 2. Gate format — what to bring + what to expect (10 min)
+## 2. The day at a glance
 
-**Per pair: 45 minutes total.**
+```mermaid
+graph LR
+    PS[Pre-session: defense prep + W4 preview]
+    WR[War-room: Gate briefing + evidence pack review]
+    D[Defense 09:00–12:00 - 3 pairs × 45 min]
+    R[Mid-Program Retro 13:00–15:00]
+    MCQ[MCQ + freeze tags + W4 briefing 15:00–16:30]
+    PS --> WR --> D --> R --> MCQ
+```
 
-- **15-min demo.** Live walkthrough of the pair-project as it stands. Show:
-  - W1 LLM endpoint with structured output + HITL surface + retry/backoff.
-  - W2 RAG layer with FAR/DFARS corpus + multi-tenant boundary + citation grounding + Thu W2 HITL-as-RAG-fallback.
-  - W3 agentic flow — at least the intake-triage (Mon-Tue) AND a partial multi-agent evaluator flow (Wed-Fri) with at least one hard-interrupt resume captured live. LangSmith trace screenshots ready.
-- **10-min Agency CIO Q&A.** Instructor or external observer plays the Agency CIO. Questions favor: cost shape, FedRAMP boundary, vendor migration story, "what if we add a second agency tenant tomorrow."
-- **10-min OIG Q&A.** Instructor or observer plays the OIG auditor. Questions favor: audit completeness (where do AuditEvents live, what's the gap surface), HITL authority defensibility (FAR-citation backing each gate), retrieval reproducibility (can you replay last week's draft).
-- **10-min per-individual architecture defense.** Tier-aware per CLAUDE.md memory `entry-tier-applied-recognition.md`. Senior candidates get production-shape questions ("at 10× volume, where breaks first?"); Entry candidates get applied-recognition questions ("name the three failure modes the LangGraph `interrupt_before` protects against").
+| Reading | Focus | Min | Why you'll need it |
+|---------|-------|----:|--------------------|
+| 2. W4 Modernization Arc Preview | What Phase 2 looks like — OpenRewrite, Strangler-Fig, Phase-1 discovery interlock | ~12 min | Defense answer to "what's next?" + W4 Mon §0 framing |
+| 3. Defense Anti-Patterns to Avoid | Five patterns that fail the panel + the defense rubric | ~12 min | Walk in with the rubric in hand |
 
-**Tier mapping:**
+Two readings, 24 minutes total. Intentionally short — defense day.
 
-| Tier | Defense shape | What the rubric is testing |
-|------|---------------|------------------------------|
-| **Senior FDE candidate** | Production-shape defense — defend cost, on-call, FedRAMP, scale, observability completeness | Can the candidate own a Phase 2 modernization decision in a real engagement? |
-| **Entry FDE candidate** | Applied-recognition defense — name the patterns used + recognize the failure modes + explain trade-offs in their own words | Can the candidate *apply* the patterns under supervision + escalate appropriately when out of depth? |
+## 3. Threading
 
-## 3. The §0 retro framing (5 min) — what you'll do this afternoon
+- **HITL programme thread:** all 5 of 7 landed (#1 W1 Fri, #2 W2 Thu, #3 W3 Mon ADR, #4 W3 Wed multi-agent handoff, #5 W3 Thu formal `interrupt()`). Two remain: #6 W4 Wed, #7 W5 Wed.
+- **Phase thread:** Phase 1 closes today. Phase 2 (Modernization) starts W4 Mon.
+- **Pair-project:** each pair defends their Phase-1 repo; `phase1-freeze-pair-N-20260612` tag lands today (D-056).
+- **Decision anchors:** D-029 (Plan Day §0 retro), D-036 (phase-level retro), D-039 (Phase 2 driven by Phase-1 discoveries), D-043 (HITL 7-touchpoint thread), D-044 (Karsun-aspect anchoring), D-056 (freeze tag).
 
-After the demos + defenses, the cohort retros Phase 1 as a whole. The §0-retro shape (per D-036) extends to a *phase-level* retro this week:
+## 4. Why today matters
 
-- What did the **W1 Thu** plan get right about LLM essentials? Where did reality diverge?
-- What did the **W2 Mon** plan get right about RAG? Where did reality diverge? (You already did this retro last Monday — pull from your `W02-pair-N-retro.md`.)
-- What did the **W3 Mon** plan get right about agentic systems? Where did reality diverge? (You'll author this retro today.)
-- **Cohort-level synthesis:** what did Phase 1 *reveal* about the brownfield (acquire-gov) that modernization needs to address? This is the input to W4 Mon's §0 — the discoveries name themselves today.
+Phase 1 is three weeks of AI adoption — LLM essentials, RAG architecture, agentic systems — built into a brownfield whose 12 debt items are waiting. The defense is not a test of memory. It is a test of whether you can make the trade-offs you made *legible* to a reviewer who was not sitting next to you when you made them.
 
-Be specific. "We underestimated complexity" is not useful. "The W2 plan didn't budget time for the multi-tenant filtering on the RAG endpoint and we shipped it 1.5 days late" is useful.
+The two panels are not symmetric. The CIO cares about cost shape, FedRAMP boundary, vendor migration, and multi-tenant scale. The OIG cares about audit completeness, HITL authority defensibility, and retrieval reproducibility. Neither will accept "we followed standard practices" without a citation.
 
-## 4. W4 modernization arc preview (10 min) — don't dive in tonight
+> [!IMPORTANT]
+> **You defend every ADR with a `/web-research` citation.** HITL #3 established this: every architectural decision cites a source. OIG reviewers ask "where does that practice come from?" ADRs citing only internal discussion are a finding, not a pass.
 
-W4 starts Phase 2: **Modernization driven by Phase-1 discoveries** (per D-039). Three things shift Monday:
+The cohort-level retro (13:00–15:00) is not an afterthought — the Phase-1 discoveries list IS the input to Monday's Plan Day §0. A weak retro produces a weak W4 plan.
 
-1. **acquire-gov becomes shared scope again.** Your pair-project continues but the whole cohort also now works against the shared brownfield. The 12 named brownfield-debt items are W4 modernization targets (Items 1 + 4 + 5 + 9 + 10 + 11 are the AI-security + supply-chain anchors; Item 3 + Item 2 are the Mid-Sprint Surprise anchors per D-060).
-2. **The stack is LEGACY by design.** Per D-056, `acquire-gov` main is Spring Boot 2.7.18 + Java 11 + javax + AWS SDK v1 + Spring Security 5. W4 Thu is the OpenRewrite hop to SB 3.0 + J17 + jakarta. You'll feel the version-era debt before you fix it.
-3. **HITL #6 lands W4 Wed** (AI Security / OWASP LLM06 Excessive Agency). HITL is now a programme thread you've seen explicitly four times (W1 Fri, W2 Thu, W3 Mon/Wed/Thu — wait, that's six). Tally going into W4: **5 of 7 touchpoints landed**. Two left: #6 W4 Wed, #7 W5 Wed.
+> [!TIP]
+> **Common failure:** hand-waving over a HITL touchpoint you didn't actually wire. "We implemented HITL" is not a defense. The question will be "show me the `interrupt()` call and the audit row it emits." If that code doesn't exist, the touchpoint doesn't exist.
 
-Don't pre-plan W4 tonight. Monday's the Plan Day. Tonight is gate prep.
+## 5. How to read this
 
-## 5. Defense anti-patterns to avoid (5 min — read aloud, memorize)
+- Read file 2 (W4 Modernization Arc Preview) first — it frames what Phase 2 looks like and how today's defense feeds Monday.
+- Read file 3 (Defense Anti-Patterns) second — carry the rubric table into the defense.
+- Both self-checks in Sec 7 of each file: do them. They're your last dry run before the panel.
+- Deeper-dives are optional today — defense day is not the time for new material.
+- Total expected time: **~24 min at 100 wpm** (plus 7 min this overview = ~31 min).
 
-- **Defending decisions you don't own.** If your pair-partner made the Wed multi-agent framework decision, you don't defend it — they do. Per-individual architecture defense is *yours*; trade-off honesty matters more than knowing everything.
-- **Citing sources you didn't read.** The OIG Q&A round has a question about FAR 15.308 — if you cite it, be ready for "what specifically does §15.308 say about delegation?" Read the text before citing.
-- **Buried-the-lede answers.** When asked "what's your biggest risk in production?", don't open with framing. Lead with the risk. Then explain.
-- **Pretending Phase 1 was clean.** The retro that surfaces the *discoveries* is the most valuable artifact you produce Friday afternoon. Pretending the W2 RAG corpus worked perfectly on the first ingestion means W4 Mon will start with a fake plan.
-- **Skipping the LangSmith trace screenshots.** They're your evidence. The OIG plays an audit role; auditors love evidence.
+> [!NOTE]
+> **Prep cue.** Open your pair's Phase-1 repo + `phase1-freeze-pair-N-20260612` tag candidate in a second tab — the rubric in file 3 names exactly which artefacts the OIG reviewer will ask to see.
 
-## 6. EOD Friday — what gets committed
+## 6. Two questions to walk in with tomorrow
 
-- 3 pair-retro files (`retros/W03-pair-N-retro.md`).
-- 1 cohort-retro file (`retros/W03-cohort-retro.md`) naming Phase-1 discoveries that drive W4 Mon §0 retro.
-- Phase 1 freeze tag on each pair-project repo (`phase1-freeze-pair-N-20260612` per D-056).
-- Weekly MCQ submitted (mid-tier, 30 min, run after the retros).
-- W4 Mon briefing distributed via the cohort channel for weekend skim.
+Friday closes Phase 1. Monday opens Phase 2. Walk in with:
 
-## 7. Glossary refresh (cumulative — terms across W1–W3)
+1. What is the one Phase-1 discovery your pair produced that most directly names a W4 modernization scope item — and how do you frame it as a numbered input to the W4 Mon §0 retro?
+2. Which of your five HITL touchpoints would fail a "show me the code" challenge from the OIG reviewer, and what is your honest answer when they ask about it?
 
-- **Hallucination failure modes** (W1) — confabulation, stale knowledge, schema drift.
-- **Hybrid retrieval** (W2) — dense + sparse (BM25) + reranker. Default for FAR/DFARS clauses.
-- **Citation grounding** (W2 Thu) — every claim traceable to a chunk; faithfulness threshold below which HITL #2 fires.
-- **ReAct loop** (W3 Tue) — Reason + Act + Observe.
-- **Supervisor-worker** (W3 Wed) — multi-agent default shape; supervisor delegates to workers.
-- **Soft vs hard interrupt** (W3 Thu) — soft suggests, hard blocks. FAR-anchored where applicable.
-- **Checkpointing** (W3 Thu) — `PostgresSaver` for production-shape; survives the SSA-shows-up-tomorrow gap.
-- **HITL touchpoints landed so far:** #1 W1 Fri LLM essentials, #2 W2 Thu RAG fallback, #3 W3 Mon Plan Day ADR, #4 W3 Wed multi-agent handoffs, #5 W3 Thu LangGraph deep-dive.
+<details>
+<summary>Topic-to-defense map</summary>
 
-## 8. Optional deep-dive (not required to participate)
+- File 2 (W4 preview) → Defense answer to Agency CIO "what's the Phase 2 plan?" + W4 Mon §0 retro framing
+- File 3 (anti-patterns + rubric) → Per-individual architecture defense + OIG Q&A prep
 
-- *(nothing tonight)* — Friday is gate day. The optional read is on hold until W4 Mon's pre-session.
+</details>
+
+<details>
+<summary>Consolidated sources</summary>
+
+- https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.0-Migration-Guide — retrieved 2026-05-26
+- https://spring.io/blog/2022/05/24/preparing-for-spring-boot-3-0 — retrieved 2026-05-26
+- https://docs.openrewrite.org/running-recipes/popular-recipe-guides/migrate-to-spring-3 — retrieved 2026-05-26
+- https://docs.openrewrite.org/recipes/java/migrate/jakarta/javaxmigrationtojakarta — retrieved 2026-05-26
+- https://martinfowler.com/articles/patterns-legacy-displacement/ — retrieved 2026-05-26
+- https://martinfowler.com/articles/exploring-gen-ai/i-still-care-about-the-code.html — retrieved 2026-05-26
+- https://martinfowler.com/articles/exploring-gen-ai/humans-and-agents.html — retrieved 2026-05-26
+- https://github.com/joelparkerhenderson/architecture-decision-record — retrieved 2026-05-26
+- https://staffeng.com/guides/staff-archetypes/ — retrieved 2026-05-26
+- https://lethain.com/getting-in-the-room/ — retrieved 2026-05-26
+
+</details>
+
+Last verified: 2026-06-06

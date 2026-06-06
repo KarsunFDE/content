@@ -21,162 +21,156 @@ sources:
   - url: https://lethain.com/getting-in-the-room/
     retrieved_on: 2026-05-26
     recency_category: foundation-stable
-last_verified: 2026-05-26
+last_verified: 2026-06-06
 ---
 
 # Defense Anti-Patterns to Avoid
+
+> [!NOTE]
+> **From earlier:** Mon HITL #3: every ADR cites a source. Thu HITL #5: show the `interrupt()` call and the audit row, not "we wired a hard gate." Those standards apply to every panel answer today.
 
 ## 1. Learning Objectives
 
 By the end of this reading, the learner can:
 
-- Name the five most common anti-patterns engineers fall into when defending AI-assisted work to senior reviewers, and recognize each one in their own draft answers.
-- Distinguish between owning a decision and explaining a decision someone else made, and articulate why the distinction matters in a per-individual defense.
-- Lead an answer with the load-bearing fact (the risk, the trade-off, the limitation) instead of with framing or context.
-- Cite a source — a standard, a regulation, a benchmark — only after verifying that they have read enough of it to answer a follow-up.
-- Use the evidence trail produced during build (traces, logs, ADRs, eval reports) as the defense's primary artifact rather than relying on recall.
+- Name the five defense anti-patterns and recognize each in their own draft answers.
+- Distinguish owning a decision from explaining one someone else made.
+- Lead every answer with the load-bearing fact before any framing.
+- Use the Phase-1 Defense Rubric (Sec 3.2) to self-assess readiness before the panel opens.
 
 ## 2. Introduction
 
-The defense is the part where someone asks you, "why did you do it this way?" — and your answer is the artifact being evaluated. Senior reviewers, auditors, and stakeholders are not testing whether the system works in the demo. They are testing whether *you* understand the trade-offs you made, whether *you* can spot the risks you carry, and whether *you* would catch the failure mode they are about to ask about. This is true in a tier-4 promotion panel, a regulator's audit, a venture-firm diligence interview, and the in-class gate you are sitting tomorrow.
+The defense is where someone asks "why did you do it this way?" — and your answer is the artifact being evaluated. Reviewers are not testing whether the system works in the demo. They are testing whether *you* understand the trade-offs you made and would catch the failure mode they are about to ask about.
 
-What makes AI-assisted work specifically hard to defend is that the artifact in front of the reviewer was not produced one line at a time by the person who has to defend it. Some of the code came from a model. Some of the decisions came from a model's suggestion that you accepted. Birgitta Böckeler at Thoughtworks frames this as constant risk assessment — every AI-accepted change is a bet with three dimensions: impact, probability, and detectability. The defense is where you make that bet legible to someone who wasn't sitting next to you when you placed it.
-
-The good news: the anti-patterns are well-known. The same five mistakes recur across audit defenses, architecture reviews, and post-incident interviews. If you internalize the list, you can catch yourself before you commit each one. This reading is the catalog; tomorrow is the practice.
+AI-assisted work is hard to defend because the artifact wasn't produced line-by-line by the person defending it. Böckeler (Thoughtworks) frames every AI-accepted change as a bet — impact × probability × detectability. The defense makes that bet legible. The same five mistakes recur; internalize them now.
 
 ## 3. Core Concepts
 
 ### 3.1 The five defense anti-patterns
 
-These are catalog entries. Each has a name, a tell, and a counter-move.
+| # | Anti-pattern | Tell | Counter-move |
+|---|-------------|------|-------------|
+| 1 | Defending decisions you don't own | "We decided" — but the decision was your partner's or a model suggestion you accepted | "My partner owned the framework choice; I owned the retrieval layer" — calibrated ownership beats performed omniscience |
+| 2 | Citing sources you haven't read | You drop FAR 15.308 or OWASP LLM06 and can't answer the follow-up | Paraphrase the principle and name the gap: "I haven't read the clause, but the discipline we applied was X" |
+| 3 | Buried-the-lede answers | Asked "biggest production risk?" — two minutes of framing before naming the risk | First sentence carries the lede: "The biggest risk is stale documents ranking above fresh in 3% of queries" |
+| 4 | Pretending the work was clean | Sanitized story — the project went roughly to plan | "The filter took 3 days not 1.5 — RLS edge case. Here's what we learned." Discovery named = competency shown |
+| 5 | Skipping the evidence | Traces, eval reports, ADR docs, audit rows — all in the folder, none on screen | Lead with the LangSmith screenshot; verbal description supports the evidence, doesn't replace it |
 
-**Anti-pattern 1: Defending decisions you don't own.**
+> [!TIP]
+> Before the panel: tag each planned answer with its anti-pattern risk and write the counter-move.
 
-The tell: you find yourself saying "we decided" when the decision was actually made by your pair-partner, your tech lead, or a model whose suggestion you accepted without strong opinions. You then have to invent justification on the spot when the reviewer presses.
+### 3.2 Phase-1 Defense Rubric
 
-The counter-move: separate ownership cleanly. "My partner owned the framework choice; I owned the retrieval layer. For the framework choice, here's what I understand of the trade-off — but they're the one to ask for the deep rationale." Reviewers respect calibrated ownership far more than they respect performed omniscience.
+**Scoring instrument — walk in with this.**
 
-**Anti-pattern 2: Citing sources you haven't read.**
+| Dimension | 5/5 — Strong pass | 2/5 — Weak / finding |
+|-----------|-------------------|----------------------|
+| **HITL touchpoint discipline** — #3 ADR (W3 Mon), #4 multi-agent handoff (W3 Wed), #5 formal `interrupt()` (W3 Thu) | Shows code + audit row for each; explains what each gate protects and which FAR clause anchors it | Names touchpoints but can't show implementation; claims "HITL is wired" without evidence; conflates soft and hard interrupts |
+| **ADR citation quality** | Every ADR cites a `/web-research` URL or named clause; can answer follow-up on cited source content | ADRs cite only internal discussion; cites a regulation but can't state what it says; no ADR log present |
+| **Framework primitive correctness** — LangGraph v1.0, LangChain v1.0, Bedrock InvokeModel | `Command(resume=...)` via `graph.invoke()` for HITL resume; no `Chain` class; no LCEL `\|` pipes as fundamental; correct Bedrock model IDs | LangGraph v0.x `.run()` resume; `Chain` class or LCEL pipe advocated as core (D-033 violation); stale Bedrock model IDs |
+| **Evaluator → consensus → SSA handoff** | Shows topology end-to-end: evaluator nodes score, consensus aggregates, SSA gate fires at handoff boundary; LangSmith trace screenshot present | Describes topology verbally only; no trace; handoff boundary implicit; no audit row for the handoff event |
+| **Audit-row schema with FAR citations** | `hitl_events` rows include `event_type`, `agent_id`, `tenant_id`, `far_clause` (e.g., `FAR 15.308`), `decision`, `timestamp`; can explain what each field defends in an OIG review | Rows exist but lack FAR clause field; can't explain field purpose; no audit rows for HITL events |
 
-The tell: you drop a regulation citation (FAR 15.308, OWASP LLM06, NIST SP 800-218) into an answer because it sounds load-bearing, and you cannot answer the follow-up question about what the cited section actually says.
-
-The counter-move: if you cite it, you have read it. If you haven't read it, paraphrase the underlying principle and say so. "The principle here is that delegation has to be documented and accountable — I haven't read the specific clause text, but that's the discipline we applied." Reviewers will trust the second answer more than they will trust an unsourced authority you can't defend.
-
-**Anti-pattern 3: Buried-the-lede answers.**
-
-The tell: a reviewer asks "what's your biggest production risk?" and you respond with two minutes of context-setting before naming the risk.
-
-The counter-move: lead with the load-bearing sentence. "The biggest risk is that the retrieval layer ranks stale documents above fresh ones in 3% of queries — here's why, and here's what we'd do about it." Context comes second. Reviewers in audit settings, in particular, are usually working from a question list and time-boxing each answer; if you bury the lede they may move on before you reach it.
-
-**Anti-pattern 4: Pretending the work was clean.**
-
-The tell: when asked what went wrong, you produce a sanitized story in which the project went roughly to plan. This is the most expensive anti-pattern because it discards the most valuable artifact you produced — the discoveries.
-
-The counter-move: name the discovery in plain terms. "The plan budgeted 1.5 days for the multi-tenant filter; it took 3 days because we hit a row-level-security edge case the design didn't anticipate. Here's what we learned. Here's what we'd do differently." A discovery you can name is a competency the reviewer recognizes. A discovery you hide reads as a competency you lack.
-
-**Anti-pattern 5: Skipping the evidence.**
-
-The tell: you have observability traces, eval reports, ADR documents, prompt-tuning history — and you do not show any of them during the defense, relying instead on verbal recall.
-
-The counter-move: the evidence is your defense. The LLM trace screenshot is more credible than your description of what the LLM did. The eval-report graph is more credible than your characterization of accuracy. Auditors are trained to weight evidence over assertion; engineers are trained to weight reasoning over evidence. Bring both, lead with the evidence.
-
-### 3.2 Why AI-assisted work amplifies each anti-pattern
-
-Böckeler's framing — risk = impact × probability × (1 / detectability) — is a useful lens. Each defense anti-pattern is a way the *detectability* of a problem collapses.
-
-- Defending a decision you don't own means the person who could detect the trade-off is not in the conversation.
-- Citing a source you haven't read means the authority that could detect the misuse is not actually consulted.
-- Burying the lede means the failure-shaped sentence never reaches the reviewer's attention.
-- Pretending the work was clean means the discovery that would have triggered a deeper review never surfaces.
-- Skipping the evidence means the artifact that would have made a problem visible stays in the trace folder.
-
-In each case, the defense itself becomes the choke-point — the place where the system's actual risk profile fails to reach the people whose job is to weigh it.
-
-### 3.3 Owning vs. explaining
-
-A defense has two kinds of statements interleaved: things you own, and things you can explain but did not own. Reviewers grade *ownership* differently from *recall*.
-
-When you own a decision, you can answer "why this and not the alternative" in your own words. You know the second-best option you rejected and the trade-off that tipped the choice. When you can explain a decision someone else made, you can repeat the rationale, but you may not be able to defend it under pressure. That's fine — staff archetypes literature is clear that no senior engineer owns every decision in a system they ship. What gets you in trouble is mis-claiming ownership of something you can only explain.
-
-The clean version: "I own this. My partner owns that. Here's our shared understanding of the third thing." Calibrated. Specific. Honest.
-
-### 3.4 Evidence as the primary artifact
-
-Kief Morris's "on-the-loop" framing is that the human's job around AI-assisted work is to build and supervise the feedback loop — on the loop, not in it for every line. The artifact of that supervision is *the loop's output*: tests passing, evals passing, traces showing the agent did what it was supposed to do.
-
-In a defense, those loop outputs are your evidence. They are stronger than your recall because they were captured when the system was actually running. The disciplined defender opens with the strongest evidence available — the eval report, the trace screenshot, the test-coverage delta — and walks the reviewer through it. The verbal answer accompanies the evidence; it does not replace it.
+> [!IMPORTANT]
+> **Tier calibration.** Senior FDEs: production-shape bar (cost, on-call, FedRAMP, scale). Entry FDEs: applied-recognition bar (name the pattern, recognize the failure mode, explain the trade-off, escalate when out of depth). Different bars; same rubric.
 
 ## 4. Generic Implementation
 
-This is a non-code topic. Here is a worked example of the same Q&A done two ways — first as an anti-pattern, then as a counter-move. The setting is a fintech engineering review of an AI-assisted fraud-detection feature.
+Same Q&A, two ways. Setting: fintech engineering review of an AI-assisted fraud-detection feature.
 
-**Reviewer's question:** "What's your worst false-negative case in production?"
+```
+ANTI-PATTERN (buries lede, unread citation, skips evidence):
+"We follow industry standard practices around evaluation. There's
+some research we used as guidance — I believe it was a Stripe paper
+— and we ran a lot of tests. Overall the false-negative rate is
+acceptable."
 
-**Anti-pattern answer (buries the lede, can't cite, skips evidence):**
+COUNTER-MOVE (leads with case, reads what it cites, shows evidence):
+"Worst case: card-not-present under $35 from a new merchant — the
+rules engine fires first, the LLM doesn't weigh in. Two false
+negatives last quarter, both chargebacks. Eval report on screen:
+4.1% false-negative rate vs. 1.2% target. Defense-in-depth — I
+haven't read the specific OWASP page, that was our security lead's
+call — but the trade-off was bounding LLM latency vs. catching
+marginal cases."
+```
 
-> "So our fraud-detection pipeline is built on a few different layers, the most important of which is the rules engine, and we layer the LLM-based classifier on top of that. We follow industry standard practices around evaluation. There's some research we used as guidance — I believe it was a Stripe paper or something similar — and we ran a lot of tests. Overall I think the false-negative rate is acceptable."
-
-What the reviewer hears: no specific case, no specific number, no specific source, no specific evidence. The candidate is performing competence rather than demonstrating it.
-
-**Counter-move answer (leads with the case, cites only what was read, shows evidence):**
-
-> "Worst case in production is card-not-present transactions under $35 from a new merchant, where the rules engine fires first and the LLM doesn't get to weigh in. We caught two false negatives there last quarter — both were chargebacks. The eval report on screen shows the cohort: 4.1% false-negative rate, versus our 1.2% target. The principle we applied for the layered design is defense-in-depth — I haven't read the specific OWASP page on it, that was our security lead's call — but the trade-off was bounding LLM latency against catching marginal cases."
-
-What the reviewer hears: a specific case, a specific number, a specific cohort, an honest cite-vs-paraphrase line, and an evidence artifact on screen. The candidate is demonstrating competence.
-
-The structural difference is that the counter-move answer's first sentence carries the lede; everything else supports it. The anti-pattern answer's lede never lands.
+The counter-move's first sentence carries the lede; everything else supports it. The anti-pattern's lede never lands.
 
 ## 5. Real-world Patterns
 
-**Healthcare: FDA pre-submission defense.** A team building an AI-assisted radiology triage tool met with the FDA for a pre-submission consultation in 2024. Their preparation playbook addressed anti-pattern 2 explicitly: every cite to a 510(k) precedent had to be by submission number, and the engineer presenting had to have read the summary of safety and effectiveness document for that precedent. They built a cite-and-read tracker and rehearsed off it. The reviewer's first probe was a follow-up on a cited precedent. The team answered cleanly.
+**Healthcare: FDA pre-submission defense.** An AI-assisted radiology triage team required every 510(k) citation to be read — not summarized — before the pre-submission consultation. They built a cite-and-read tracker. The reviewer's first probe was a follow-up on a cited precedent. They answered cleanly.
 
-**Gaming: post-incident review at scale.** A multiplayer-game company's weekly post-incident review enforces anti-pattern 3 at the format level: every presenter must lead with a single sentence naming customer impact in concrete units (users affected, minutes of degradation, revenue lost). The chair cuts off context-first openings. The team's MTTR improved measurably after the format change — not because incidents got easier, but because the handoff to the review audience got faster.
+**Fintech: model-risk-management.** A US bank's LLM credit-decisioning submission was rejected because validators found production cases quietly fixed without naming the failure class. Discovery named = competence. Discovery hidden = finding.
 
-**Fintech: model-risk-management defense.** A US bank's model-risk-management process for an LLM-assisted credit-decisioning workflow required defending the model to independent validators. The team's post-validation retro names anti-pattern 4 as the one that hurt them: validators caught two production cases the engineering team had quietly fixed without naming the underlying class of failure in their submission. The submission had to be redone. A discovery you name and remediate is documented competence; a discovery you fix and don't name reads as a discovery you tried to hide.
+> [!NOTE]
+> Both patterns map to anti-pattern 4. The team knew the discovery and chose not to surface it.
 
 ## 6. Best Practices
 
-- Write down the five anti-pattern names on a notecard you keep with you during the defense; seeing them in your peripheral vision is enough to catch the pattern in your own mouth.
-- Build an "owned vs. explained" two-column list of every load-bearing decision; rehearse the owned column out loud, and prepare honest "ask my partner" handoffs for the explained column.
-- If you intend to cite a regulation, standard, or paper, read the actual cited section the day before — not a summary, the source itself.
-- Practice leading each answer with the failure-shaped sentence; rehearse with a partner who interrupts the moment you bury the lede.
-- Build the evidence pack — traces, eval reports, ADR list, prompt-history snapshots — as a small set of named artifacts you can open within five seconds.
-- Calibrate honesty above performance: a defender who says "I don't know, but here's how I'd find out" is rated higher than one who confabulates.
+- Build an "owned vs. explained" list; rehearse the owned column aloud.
+- Read every source you intend to cite — the actual section, not a summary.
+- Rehearse leading with the failure-shaped sentence; have a partner cut you off when you bury the lede.
+- Assemble the evidence pack (traces, eval reports, ADR list, audit-row snapshots) as named files you can open in five seconds.
+
+> [!WARNING]
+> **Anti-patterns: `defense-no-citation` + `hand-wave-hitl`.** (1) "Standard practice" without a `/web-research` citation — OIG needs a URL or clause number. (2) "We implemented HITL #5" without showing `interrupt_before=['ssa_approval']` and the `hitl_events` row. Both root cause: asserting without evidence.
 
 ## 7. Hands-on Exercise
 
-**Mock-defense exercise — 15 minutes, pair format.**
+**Mock-defense — 10 minutes, pair format.** Partner A presents (3 min). Partner B asks in order and notes which anti-pattern each answer commits:
 
-Partner A plays the defender. Partner B plays a senior reviewer.
+1. "Worst failure mode in production today?"
+2. "Cite one source that informed a key decision — what does it say?"
+3. "Walk me through a trade-off and tell me who owned it."
 
-Partner A presents — in three minutes — a system they recently built, with at least one AI-assisted component. Partner B asks **three questions**, drawn from this list, in this order:
+Under 90 seconds each. Debrief, swap.
 
-1. "What's the worst failure mode this system has in production today?"
-2. "Cite one source — a standard, a regulation, a paper — that informed a key design decision. Then tell me what that source actually says."
-3. "Walk me through a specific trade-off you made, and tell me which of you on the team owned that decision."
+> [!NOTE]
+> **Self-check** (30s — answer mentally before expanding)
+>
+> 1. Which of the five anti-patterns maps directly to the HITL #3 ADR discipline, and what is the tell?
+> 2. In the buried-lede anti-pattern, what is the structural fix the counter-move applies?
 
-Partner A answers each in under 90 seconds. Partner B does not coach during the answers, but writes down which of the five anti-patterns (if any) the answer commits.
+<details>
+<summary>Show answers</summary>
 
-After all three answers, Partner B reads the anti-pattern observations to Partner A. The pair discusses each for two minutes: did the defender catch it themselves? What was the counter-move that would have been stronger?
+1. Anti-pattern 2 (Citing sources you haven't read). The tell: you cite a standard in an ADR but cannot answer "what does that source actually say?" — exactly what the OIG Q&A probes.
 
-Swap roles. Repeat.
+2. Make the first sentence carry the lede: state the risk or trade-off before any context. Everything that follows supports the opening sentence rather than building toward it.
 
-**What good looks like.** A strong defender catches themselves committing an anti-pattern mid-answer and self-corrects. They say "I don't know" to at least one part of one question, then describe how they would find out. They reach for a specific evidence artifact at least once. A weak defender delivers three smooth, generic, evidence-free answers that could apply to any system.
+</details>
 
 ## 8. Key Takeaways
 
-- Can you name all five defense anti-patterns and recognize each one in a transcript of your own answer?
-- Can you separate cleanly, in a single sentence, what you own from what you can explain but did not decide?
-- Can you lead an answer with the load-bearing sentence — the risk, the failure mode, the trade-off — before any framing?
-- Can you describe the discipline you follow before citing a source, and the alternative phrasing you use when you have not read the source?
-- Can you name the three to five pieces of evidence you would bring to your next defense and explain why each one is stronger than the verbal description it replaces?
+- Five anti-patterns: defending decisions you don't own, citing unread sources, burying the lede, pretending the work was clean, skipping the evidence.
+- Each collapses *detectability* — actual risk never reaches the reviewers who need it.
+- Own vs. explain: mis-claiming ownership is the most common individual failure mode.
+- Evidence leads: traces, eval reports, ADRs, and audit rows beat verbal recall every time.
+- Walk in with the Sec 3.2 rubric — it is the scoring instrument; find gaps now, not during the panel.
 
-## Sources
+## 9. Sources
 
-1. [I still care about the code (Birgitta Böckeler, Thoughtworks)](https://martinfowler.com/articles/exploring-gen-ai/i-still-care-about-the-code.html) — retrieved 2026-05-26
-2. [Humans and Agents in Software Engineering Loops (Kief Morris, Thoughtworks)](https://martinfowler.com/articles/exploring-gen-ai/humans-and-agents.html) — retrieved 2026-05-26
-3. [Architecture Decision Record (Joel Parker Henderson et al.)](https://github.com/joelparkerhenderson/architecture-decision-record) — retrieved 2026-05-26
-4. [Staff Archetypes (Will Larson, StaffEng)](https://staffeng.com/guides/staff-archetypes/) — retrieved 2026-05-26
-5. [Getting in the Room (Will Larson)](https://lethain.com/getting-in-the-room/) — retrieved 2026-05-26
+<details>
+<summary>References — retrieved via /web-research per D-046</summary>
 
-Last verified: 2026-05-26
+- https://martinfowler.com/articles/exploring-gen-ai/i-still-care-about-the-code.html — retrieved 2026-05-26 — hot-tech
+- https://martinfowler.com/articles/exploring-gen-ai/humans-and-agents.html — retrieved 2026-05-26 — hot-tech
+- https://github.com/joelparkerhenderson/architecture-decision-record — retrieved 2026-05-26 — foundation-stable
+- https://staffeng.com/guides/staff-archetypes/ — retrieved 2026-05-26 — foundation-stable
+- https://lethain.com/getting-in-the-room/ — retrieved 2026-05-26 — foundation-stable
+
+</details>
+
+<details>
+<summary>Deeper dive — for senior FDEs (optional, not in reading budget)</summary>
+
+**The OIG audit model.** OIG reviewers apply a reconstruction test drawn from OMB Circular A-123: can the system's behavior be reconstructed from the audit record alone, without relying on the engineer's testimony? That test is why the audit-row schema matters more than accuracy metrics in an OIG Q&A.
+
+**Kief Morris's "on-the-loop" framing.** The defender's job is to demonstrate they supervised the AI's loop — not that they reviewed every token. The evidence: eval reports that ran on schedule, HITL interrupts that fired with documented decisions, ADRs that record rationale for configuration choices. If none of those exist, the panel finds the gap.
+
+**Staff archetypes and ownership calibration.** Will Larson's taxonomy (Tech Lead, Architect, Solver, Right Hand) maps cleanly: own the architectural decision you were Tech Lead or Architect on; explain implementation decisions you delegated; explicitly name what you don't know and how you'd discover it. Interviewers who know the taxonomy reward that calibration.
+
+</details>
+
+Last verified: 2026-06-06
