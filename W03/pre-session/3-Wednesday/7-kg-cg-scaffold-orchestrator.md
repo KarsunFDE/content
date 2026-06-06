@@ -4,7 +4,7 @@ day: Wed
 topic_slug: kg-cg-scaffold-orchestrator
 topic_title: "KG + CG + scaffold orchestrator — graph-backed context for agents"
 parent_overview: W03/pre-session/3-Wednesday/1-DailyTopicOverview.md
-estimated_minutes: 14
+estimated_minutes: 11
 sources:
   - url: https://www.modern-datatools.com/compare/neo4j-vs-postgresql
     retrieved_on: 2026-05-26
@@ -21,162 +21,113 @@ sources:
   - url: https://github.com/DEEP-PolyU/Awesome-GraphRAG
     retrieved_on: 2026-05-26
     recency_category: hot-tech
-last_verified: 2026-05-26
+last_verified: 2026-06-06
 ---
 
 # KG + CG + scaffold orchestrator — graph-backed context for agents
 
+> [!NOTE]
+> **From earlier:** Tue's RAG work retrieved flat text chunks. Today's graph-backed retrieval adds traversal — multi-hop relational questions that vector similarity alone can't answer.
+
 ## 1. Learning Objectives
 
-By the end of this reading, the learner can:
-
-- Distinguish a *Knowledge Graph* (KG — persistent, source-of-truth) from a *Context Graph* (CG — runtime, per-request, stitched from the KG plus retrieved evidence).
-- Apply the *scaffold orchestrator* pattern: a stable tool contract wrapping a swappable graph backend, so backend choice remains an ADR rather than locking the agent design.
-- Compare three viable graph backends — Neo4j, Postgres recursive CTE, NetworkX in-process — on the dimensions that actually decide a production pick (operational burden, traversal performance, data-residency, ops budget).
-- Recognize when graph-backed retrieval beats vector RAG and when it does not, based on the structure of the underlying domain.
-- Read and write a small multi-hop graph traversal in Cypher and as a Postgres recursive CTE.
+- Distinguish a *Knowledge Graph* (KG — persistent, source-of-truth) from a *Context Graph* (CG — runtime, per-request subgraph stitched from the KG).
+- Apply the *scaffold orchestrator* pattern: a stable `kg_query` tool contract wrapping a swappable backend.
+- Compare Neo4j, Postgres recursive CTE, and NetworkX on the dimensions that drive a production pick.
+- Recognise when graph-backed retrieval beats vector RAG and when it doesn't.
 
 ## 2. Introduction
 
-A lot of what an AI agent needs to "know" about a domain is relational: entity A is connected to entity B by relationship R; B is connected to C; the multi-hop chain from A to C is the answer. Vector RAG handles unstructured-text-similarity retrieval well but degrades on this shape — multi-hop questions require traversal, and traversal over a flat vector index produces noise rather than answers [1].
+Much of what an agent needs is relational: entity A connects to B, B to C; the multi-hop chain is the answer. Vector RAG degrades on this shape.
 
-The discipline that addresses this is **graph-backed retrieval** — and in 2026 production literature it usually arrives as a pair: a **Knowledge Graph (KG)** holds the persistent entities and relationships; a **Context Graph (CG)** is the runtime, per-request graph the agent assembles from the KG plus retrieved evidence and stitches into its prompt [2]. The KG is the source; the CG is the snapshot.
-
-The mechanical question is how to back the KG. Neo4j is the purpose-built choice; Postgres recursive CTEs let you reuse infrastructure you already have; NetworkX in-process is a third option for small graphs that don't justify either. The choice has real consequences for performance, ops burden, data residency, and team skills — and is rarely obvious at the start of a project. The **scaffold orchestrator** pattern keeps this choice from locking the architecture: a stable `kg_query` tool contract wraps whichever backend you pick today, and the agent doesn't know or care which it is.
+A **Knowledge Graph (KG)** holds persistent entities and relationships; a **Context Graph (CG)** is the runtime per-request subgraph assembled from the KG and stitched into the prompt. The **scaffold orchestrator** keeps backend choice from locking the architecture: a stable `kg_query` tool contract wraps the backend; the agent never knows which.
 
 ## 3. Core Concepts
 
-### 3.1 Knowledge Graph (KG) — the persistent source of truth
+### 3.1 KG vs CG
 
-A KG is a structured store of entities (nodes) and relationships (edges), where edges carry semantics. "User A *owns* Product B" is different from "User A *viewed* Product B" — both are edges from A to B, but they tell the agent different things [4].
+| | Knowledge Graph (KG) | Context Graph (CG) |
+|-|---------------------|-------------------|
+| Persistence | Durable, canonical, shared across requests | Per-request, runtime-assembled |
+| Size | Potentially millions of nodes | Bounded — dozens to hundreds of nodes |
+| Role | Source of truth; the agent's vocabulary | What enters the prompt for this request |
 
-The KG is **persistent** and **canonical**: it lives in a durable store, is updated as the domain evolves, and is shared across requests. Multiple agents (or multiple invocations of the same agent) read from it.
+The same KG entity produces different CGs depending on the question being answered.
 
-The KG's schema is the agent's vocabulary. If your domain has entities like *Document*, *Author*, *Topic*, *Reviewer*, *Approval*, and you want the agent to reason about "documents authored by X that are awaiting approval from a reviewer who has previously rejected a similar topic," your KG schema must encode those entities and edges explicitly. The schema is a design artifact, not an emergent thing.
+### 3.2 When KG beats vector RAG (and when it doesn't)
 
-### 3.2 Context Graph (CG) — the runtime per-request snapshot
+Graph wins on **multi-hop** questions ("vendor with red CPARs who won contracts against this solicitation" — 3 hops), **typed-semantic** edges (`won` vs `lost` mean different things), and **structural patterns** (paths, cycles).
 
-A CG is what the agent *actually uses* during a single request. It is **per-request**, **runtime-assembled**, and **smaller than the KG** — typically a subgraph the agent has stitched together by following relevant edges from a seed entity. The CG plus any unstructured evidence (text snippets from a vector retrieval) becomes the prompt context [3].
+Vector RAG wins on single-hop text similarity or unstructured prose. Production systems often use **hybrid retrieval**: vector for seed entities, KG for relational expansion.
 
-Concretely: the agent has a question about Document X. It queries the KG: "give me X, its author, the author's recent documents, the reviewers assigned to X, and the reviewers' recent decisions on similar topics." The result is the CG for this request — a few dozen nodes and edges out of a KG that may have millions. The CG is what gets serialized into the prompt.
+### 3.3 Three viable backends
 
-This separation matters because:
+| Backend | Pros | Cons | Best fit |
+|---------|------|------|----------|
+| **Neo4j** | Physical-pointer traversal; Cypher concise; multi-hop ~constant-time | Another DB; compliance scope expansion | Deep traversal (4+ hops), large graphs |
+| **Postgres CTE** | Zero new infra; 1–3 hops fine | Expensive past 3–4 hops; indexing non-obvious | Shallow, modest cardinality, existing Postgres |
+| **NetworkX** | Zero infra; pure Python | In-memory only; single process; no restart survival | Small graphs (~10k nodes) |
 
-- The KG can be huge (millions of nodes) but the CG is bounded (hundreds of nodes max, often dozens).
-- The CG is request-specific — assembling it is the agent's reasoning step, not a static config.
-- Different requests for the same entity produce different CGs depending on what the agent is trying to answer.
+Decision drivers: data-residency, ops budget, sub-200ms p95 latency target, graph size, traversal depth.
 
-### 3.3 When KG retrieval beats vector RAG (and when it doesn't)
+### 3.4 The scaffold orchestrator pattern
 
-Graph-backed retrieval wins when:
-
-- The question is **multi-hop**: "find X that has property P, was created by Y who has worked on Z." Vector similarity over flat embeddings can find X but cannot traverse to Y and Z [4].
-- The relationships carry **typed semantics** that affect the answer. "Won contract" vs "lost contract" is different even when both edges are A→B.
-- The answer depends on **structural patterns** (cycles, paths, neighborhoods) rather than text similarity.
-
-Vector RAG wins (or graph adds little) when:
-
-- The question is single-hop text similarity ("find documents like this one").
-- The domain is fundamentally unstructured (long-form prose) with no useful entity decomposition.
-- The relational structure exists but is shallow (one or two hops max).
-
-Production systems often use **hybrid retrieval**: vector recall finds candidate entities, the KG/CG step expands those candidates into the relational context the prompt needs [5]. Buyer intent to adopt hybrid retrieval roughly tripled from January to March 2026 in the enterprise RAG surveys [3].
-
-### 3.4 Three viable backends — the trade-off space
-
-**Neo4j** — purpose-built graph database, Cypher query language.
-
-- *Pros:* Relationships are physical pointers; multi-hop traversal is roughly constant-time per hop regardless of graph size [1]. Cypher is concise and natural for relational questions.
-- *Cons:* Another database to operate (backup, monitor, patch, secure). License/cost considerations for the commercial edition. Adds another component to data-residency / compliance scopes.
-
-**Postgres recursive CTE** — use your existing Postgres with `WITH RECURSIVE` queries.
-
-- *Pros:* Zero new infrastructure. Team already knows the database. Suitable for shallow traversal (1–3 hops) at modest cardinality [2].
-- *Cons:* Recursive CTEs become expensive past 3–4 hops or when branching factors are high — by depth 4 with branching 10, you visit 10,000 nodes per query. Performance depends heavily on indexing you don't naturally think about until queries get slow [1][2].
-
-**NetworkX in-process** — Python graph library, in-memory.
-
-- *Pros:* Zero infrastructure. Pure Python algorithms, lots of options. Fast for small graphs.
-- *Cons:* In-memory only — doesn't survive process restart. Doesn't scale beyond what fits in one process. Concurrency is the application's problem [1].
-
-There is no universally right answer. The decision drivers are: data-residency / compliance boundary (does adding Neo4j cross a regulatory line?), ops budget (do you have the team capacity to operate another database?), query latency targets (sub-200ms p95 changes the answer), graph size, and traversal depth.
-
-### 3.5 The scaffold orchestrator pattern
-
-The pattern: the agent does not query the graph directly. It calls a **stable `kg_query` tool** whose contract is independent of the backend. Behind the tool, an adapter translates the query into Cypher, Postgres CTE, or NetworkX traversal — but the agent doesn't see which [4].
+The agent calls a **stable `kg_query` tool** independent of the backend. An adapter translates to Cypher, Postgres CTE, or NetworkX — the agent never sees which.
 
 ```text
-   agent ──tool_call(kg_query, params)──▶ [ kg_query adapter ] ──▶ Neo4j
-                                                            └──▶ Postgres CTE
-                                                            └──▶ NetworkX
+agent ──tool_call(kg_query, params)──▶ [ kg_query adapter ] ──▶ Neo4j
+                                                         └──▶ Postgres CTE
+                                                         └──▶ NetworkX
 ```
 
-Why this matters:
+Backend choice becomes an ADR, not lock-in. A/B comparisons and rollback are straightforward.
 
-- The backend choice can be revisited as data scale or operational realities change without rewriting the agent's prompts or tools.
-- A/B comparisons between backends become tractable — same tool contract, swap the adapter, measure.
-- Operational rollback is straightforward — if Neo4j is down, the adapter can fall back to a degraded mode on Postgres for read-only queries.
+> [!IMPORTANT]
+> **SA-3 ADR setup.** Today's afternoon scenario-research slot (D-040) opens SA-3: KG/CG backend for the 17-entity acquire-gov schema. The scaffold pattern is what lets you pick a backend for the MVP (probably NetworkX or Postgres CTE) while keeping the architecture open for production (Neo4j if traversal depth or cardinality forces it). Full ADR due EOD Thu W4.
 
-The cost of the pattern is a typed schema for the tool's inputs and outputs (a Pydantic model or equivalent) that all backends must honor. This is the same discipline as keeping a stable interface in front of any swappable persistence — Repository pattern, hexagonal architecture, port-and-adapter — applied to graph access.
+### 3.5 Bounding the CG
 
-### 3.6 The CG-as-prompt-context discipline
-
-Once the CG is assembled, it has to enter the prompt. Two shapes are common:
-
-- **Serialized text** — convert the subgraph to a structured text format ("Entity A is connected to B by relationship R; B has property P; …"). Easy for the model to consume but verbose [3].
-- **Tabular** — present the subgraph as a small table of entity rows with a separate edge table. More compact for models that handle tables well.
-
-Either way, the CG has to be **bounded** before it enters the prompt. A 200-node subgraph serialized as text can blow past the context budget for a moderately complex request. Production systems prune the CG by relevance (e.g., top-K entities by graph-centrality or by query-similarity) before serialization [3][5].
+A 200-node subgraph serialized as text blows the context budget. Prune by relevance before serialization. **Cap traversal depth and result count at the tool boundary.**
 
 ## 4. Generic Implementation
 
-A scaffold orchestrator with a swappable backend. The domain is generic: a **scientific-publication assistant** (no federal-acquisitions overlap) where the agent needs to traverse author/paper/citation/affiliation relationships.
+Scaffold orchestrator with swappable backend — scientific-publication assistant (not federal-acquisitions):
 
 ```python
 from typing import Protocol, TypedDict
-from langgraph.graph import StateGraph, START, END
-from langgraph.types import Command
 
-# --- Stable tool contract (the scaffold) ---
 class KGQuery(TypedDict):
     seed_entity_id: str
-    traversal_pattern: str   # e.g., "author->papers->citations->cited_authors"
+    traversal_pattern: str
     max_hops: int
     max_results: int
 
 class KGResult(TypedDict):
-    nodes: list[dict]   # [{"id": ..., "type": ..., "props": {...}}]
-    edges: list[dict]   # [{"src": ..., "dst": ..., "type": ..., "props": {...}}]
+    nodes: list[dict]
+    edges: list[dict]
 
 class KGBackend(Protocol):
     def query(self, q: KGQuery) -> KGResult: ...
 
-# --- Backend implementations ---
 class Neo4jBackend:
-    def __init__(self, driver): self.driver = driver
     def query(self, q: KGQuery) -> KGResult:
-        # Cypher translation
         cypher = """
         MATCH p = (seed {id: $id})-[*1..$hops]-(other)
-        WHERE seed.type = $traversal_root
         RETURN nodes(p) AS nodes, relationships(p) AS edges
         LIMIT $max_results
         """
         with self.driver.session() as s:
-            rows = s.run(cypher, id=q["seed_entity_id"], hops=q["max_hops"],
-                         max_results=q["max_results"]).data()
+            rows = s.run(cypher, id=q["seed_entity_id"],
+                         hops=q["max_hops"], max_results=q["max_results"]).data()
         return _normalize_neo4j(rows)
 
 class PostgresCTEBackend:
-    def __init__(self, conn): self.conn = conn
     def query(self, q: KGQuery) -> KGResult:
-        # Recursive CTE translation
         sql = """
         WITH RECURSIVE traversal AS (
-          SELECT id, parent_id, depth, edge_type FROM entities
-          WHERE id = %(seed)s
+          SELECT id, parent_id, 0 AS depth FROM entities WHERE id = %(seed)s
           UNION ALL
-          SELECT e.id, e.parent_id, t.depth + 1, e.edge_type
+          SELECT e.id, e.parent_id, t.depth + 1
           FROM entities e JOIN traversal t ON e.parent_id = t.id
           WHERE t.depth < %(hops)s
         )
@@ -184,123 +135,94 @@ class PostgresCTEBackend:
         """
         cur = self.conn.cursor()
         cur.execute(sql, {"seed": q["seed_entity_id"],
-                          "hops": q["max_hops"],
-                          "max_results": q["max_results"]})
+                          "hops": q["max_hops"], "max_results": q["max_results"]})
         return _normalize_postgres(cur.fetchall())
 
-class NetworkXBackend:
-    def __init__(self, graph): self.G = graph
-    def query(self, q: KGQuery) -> KGResult:
-        import networkx as nx
-        nodes = nx.single_source_shortest_path_length(
-            self.G, q["seed_entity_id"], cutoff=q["max_hops"]
-        )
-        # Trim by max_results, normalize to KGResult shape
-        return _normalize_nx(self.G, list(nodes)[:q["max_results"]])
-
-# --- The agent only sees the contract ---
 def kg_query_tool(backend: KGBackend):
     def _tool(seed_entity_id: str, traversal_pattern: str,
               max_hops: int = 3, max_results: int = 50) -> KGResult:
-        return backend.query({
-            "seed_entity_id": seed_entity_id,
-            "traversal_pattern": traversal_pattern,
-            "max_hops": max_hops,
-            "max_results": max_results,
-        })
+        return backend.query({"seed_entity_id": seed_entity_id,
+                              "traversal_pattern": traversal_pattern,
+                              "max_hops": max_hops, "max_results": max_results})
     return _tool
 
-# Agent wiring — swap the backend without changing the agent
-backend = Neo4jBackend(driver=neo4j_driver)  # or PostgresCTEBackend, or NetworkXBackend
+# Swap backend without changing agent:
+backend = Neo4jBackend(driver=neo4j_driver)
 tool = kg_query_tool(backend)
-# ...register `tool` with the supervisor / worker that calls it
 ```
 
-What each piece does:
+`KGQuery` and `KGResult` are the typed contract every backend honors. The agent registers `tool` and never knows which backend it calls.
 
-- **`KGQuery` and `KGResult`** are the typed schema — the tool contract every backend honors.
-- **`KGBackend` protocol** is the swappable port.
-- **`Neo4jBackend`, `PostgresCTEBackend`, `NetworkXBackend`** are the adapters; each translates the stable query into its native language.
-- **`kg_query_tool(backend)`** binds an adapter for the runtime. The agent registers the resulting callable as a tool and never knows which backend it is calling.
-
-Two example traversals expressed in two languages:
-
-```cypher
--- Cypher: papers by authors who collaborated with author X in the last 5 years
-MATCH (x:Author {id: $author_id})-[:CO_AUTHORED]-(collab:Author)-[:WROTE]->(p:Paper)
-WHERE p.year >= 2021
-RETURN p, collab LIMIT 50
-```
-
-```sql
--- Postgres recursive CTE: same traversal (shallow, 2 hops)
-WITH RECURSIVE collabs AS (
-  SELECT b.author_b AS collab_id, 1 AS depth
-  FROM co_authorships b WHERE b.author_a = %(author_id)s
-)
-SELECT p.* FROM collabs c
-JOIN authorships au ON au.author_id = c.collab_id
-JOIN papers p ON p.id = au.paper_id
-WHERE p.year >= 2021
-LIMIT 50
-```
-
-The Cypher version reads more naturally for relational thinking; the SQL is fine here but starts to compound when traversal depth grows past 3.
+> [!NOTE]
+> **The scaffold pattern is the interlock with SA-3.** SA-3 today: which backend for the 17-entity acquire-gov schema? The scaffold lets you pick NetworkX for MVP and upgrade to Neo4j later — same tool contract, swap the adapter.
 
 ## 5. Real-world Patterns
 
-**E-commerce — recommendation graph.** Marketplace recommendation systems use a KG of `User`, `Item`, `Category`, `Brand`, with edges like `purchased`, `viewed`, `wishlisted`, `belongs_to`. The CG for one shopper's session is the subgraph traversed from their `User` node: their recent purchases, those purchases' categories, other items in those categories purchased by similar users. Neo4j is a common backend at scale because the multi-hop traversals dominate the workload [4].
+**E-commerce — recommendation graph.** KG of `User`, `Item`, `Category`, `Brand`; multi-hop traversals dominate. Neo4j common at scale for deep traversal; Postgres CTE viable for shallow cardinality.
 
-**Healthcare — adverse-event reasoning.** Pharmacovigilance systems use a KG of `Drug`, `Patient`, `Condition`, `AdverseEvent`, with edges like `prescribed_to`, `manifested_in`, `interacts_with`. The CG for one case is a subgraph traced from the patient and the drug in question, expanding outward to drugs with similar mechanisms and patients with similar profiles. Postgres recursive CTEs are common here because the data already lives in regulated relational stores and adding Neo4j crosses a compliance boundary [2].
-
-**SaaS — internal-tool knowledge assistant.** A B2B platform with hundreds of services, services-with-services dependencies, on-call-rotations, and historical-incidents uses a KG to let an assistant answer "who do I escalate this incident to" — a multi-hop traversal from service → owning-team → on-call → escalation-chain. NetworkX in-process is sufficient because the entity count is small (~10k nodes), it all fits in one process, and the team didn't want to add another datastore [1].
-
-**Logistics — supply-chain provenance.** Container-tracking systems use a KG of `Container`, `Vessel`, `Port`, `Carrier`, `Customs`. The CG for one container traces its full journey including transshipments and customs events. Neo4j is the common backend because the depth of provenance traversal (often 8–12 hops) makes recursive CTEs impractical and the graph is too large for in-process [4].
+**Healthcare — adverse-event reasoning.** KG of `Drug`, `Patient`, `Condition`, `AdverseEvent`. Postgres CTEs common — data already in regulated relational stores; adding Neo4j expands compliance scope.
 
 ## 6. Best Practices
 
-- **Design the KG schema explicitly before writing the agent.** Entities, edges, edge-type semantics — these are the agent's vocabulary; emergent schemas produce inconsistent agent behavior.
-- **Bound the CG before it enters the prompt.** Prune by relevance, centrality, or path length. A 200-node subgraph serialized to text often blows the context budget.
-- **Use the scaffold orchestrator pattern from day one.** A stable `kg_query` tool contract decouples backend choice from agent design — the cost of adding it is low, the cost of skipping it is rewriting tool calls later.
-- **Pick the backend by ops + data-residency + depth + cardinality.** Neo4j for deep, large, traversal-dominated workloads; Postgres CTE for shallow, modest-cardinality workloads where you already have Postgres; NetworkX for small graphs where adding a database isn't justified.
-- **Cap traversal depth and result count at the tool boundary.** Unbounded traversal is a DoS against your own infrastructure.
-- **Hybrid retrieval often beats pure KG or pure vector.** Use vector to find candidate seed entities; use the KG to expand to relational context.
-- **Type the tool's inputs and outputs.** Pydantic / TypedDict / JSON Schema — the typed contract is what makes backend swapping safe.
+- **Design the KG schema explicitly before writing the agent.** Entities, edges, and edge-type semantics are the agent's vocabulary.
+- **Bound the CG before it enters the prompt.** Prune by relevance or path length.
+- **Use the scaffold orchestrator from day one.** Adding it later requires rewriting every tool call that touches the graph.
+- **Cap traversal depth and result count at the tool boundary.** Unbounded traversal is a DoS against your own infra.
+- **Hybrid retrieval often beats pure KG or pure vector.** Vector finds seed entities; KG expands to relational context.
+
+> [!WARNING]
+> **Anti-pattern: `kg-as-rag-substitute`.** Replacing your vector RAG pipeline entirely with a KG does not work for unstructured text retrieval — KGs answer relational/structural questions; vector retrieval answers semantic-similarity questions. Production systems that need both use hybrid retrieval: vector for candidate seed entities, KG for relational expansion. Removing vector retrieval in favor of a pure KG will cause recall failures on questions that are fundamentally text-similarity shaped, not graph-shaped.
 
 ## 7. Hands-on Exercise
 
-**Whiteboard + small SQL exercise (20 min).** You are designing the KG for a *music-streaming recommendation assistant* (no federal-acquisitions overlap). The domain has the following entities and relationships:
+You are designing the KG for a **music-streaming recommendation assistant** (not federal-acquisitions). Entities: `User`, `Track`, `Artist`, `Album`, `Genre`. Edges: `listened_to`, `by_artist`, `on_album`, `in_genre`, `collaborated_with`.
 
-- `User` — listeners
-- `Track` — songs
-- `Artist` — creators of tracks (a track may have multiple artists)
-- `Album` — collections of tracks
-- `Genre` — track classifications
-- Edges: `User --listened_to--> Track`, `Track --by_artist--> Artist`, `Track --on_album--> Album`, `Track --in_genre--> Genre`, `Artist --collaborated_with--> Artist`
+Tasks: (1) Sketch the schema with entity types and edge types labeled. (2) Write the Postgres recursive CTE for: "Find artists who collaborated with artists this user listened to, where the user hasn't yet listened to the collaborating artist's tracks." (3) Write the equivalent Cypher. (4) Choose a backend for an MVP with 100k users, 1M tracks — justify in one sentence keyed to ops budget and traversal depth.
 
-Tasks:
+> [!NOTE]
+> **Self-check** (30s — answer mentally before expanding)
+>
+> 1. Your agent calls `kg_query` directly against the Neo4j driver — no adapter layer. What does this prevent you from doing later?
+> 2. A CG subgraph returns 300 nodes serialized as text. What's the failure mode and the fix?
 
-1. Draw the KG schema with entity types and edge types labeled.
-2. Write the Postgres recursive CTE for: "Given a user, find all artists who collaborated with artists this user has listened to, where the user has not yet listened to any of the collaborating artist's tracks." (2–3 hops.)
-3. Write the equivalent Cypher query.
-4. Decide which backend (Neo4j / Postgres CTE / NetworkX) you would pick for an MVP with 100k users, 1M tracks, average 20 plays per user per session. Give one-sentence justifications keyed to ops budget, traversal depth, and cardinality.
+<details>
+<summary>Show answers</summary>
 
-**What good looks like:** A clear schema diagram. A recursive CTE that uses a `WITH RECURSIVE` clause with an explicit depth cap, joining `listened_to → by_artist → collaborated_with → (anti-join on listened_to)`. A Cypher query that uses variable-length path `[:by_artist|collaborated_with*1..3]` syntax. A backend pick that names a concrete reason — for instance, "Postgres CTE — traversal depth 3 fits within CTE practical limits, ops team already operates Postgres, cardinality (1M tracks × 20 plays = 20M edges) is large but indexable; adding Neo4j adds an ops surface without a corresponding traversal-depth win at this scale."
+1. You can't swap backends without rewriting every agent prompt and tool-call invocation. The scaffold pattern's value is decoupling backend choice from agent design — skip it and the backend becomes architectural lock-in.
+2. 300-node serialized text likely blows the context budget, causing truncation or degraded reasoning. Fix: prune the CG at the tool boundary — cap `max_results` and `max_hops`, and prune by graph-centrality or query-similarity before serialization. Only the most relevant subgraph should enter the prompt.
+
+</details>
+
+> [!TIP]
+> **Hybrid retrieval handles both shapes.** Use vector search to find candidate seed entities (text similarity), then the KG/CG step to expand them into relational context (multi-hop traversal). Neither alone covers the full retrieval surface.
 
 ## 8. Key Takeaways
 
-- *What is the difference between a Knowledge Graph and a Context Graph?* (KG is the persistent source of truth; CG is the runtime per-request subgraph assembled from the KG and stitched into the prompt.)
-- *When does graph-backed retrieval beat vector RAG?* (Multi-hop questions, typed-semantic relationships, structural-pattern queries; vector is fine for single-hop text similarity.)
-- *What does the scaffold orchestrator pattern give you?* (Backend choice becomes an ADR, not an architectural lock-in; agent prompts and tools are stable while you swap Neo4j/Postgres/NetworkX underneath.)
-- *What are the decision drivers when picking among Neo4j, Postgres recursive CTE, and NetworkX?* (Operational burden, traversal depth, cardinality, data residency, ops budget — there is no universal answer.)
-- *Why must the CG be bounded before it enters the prompt?* (Unbounded subgraph serialization blows context budgets; production systems prune by relevance, centrality, or path length.)
+- KG is persistent source-of-truth; CG is the runtime per-request subgraph assembled from it and stitched into the prompt.
+- Graph-backed retrieval wins on multi-hop, typed-semantic, structural-pattern questions; vector RAG wins on single-hop text similarity. Hybrid retrieval handles both.
+- Scaffold orchestrator: stable `kg_query` tool contract + swappable backend adapter. Backend choice stays an ADR.
+- Pick backend by ops burden, traversal depth, cardinality, data-residency. No universal answer.
 
-## Sources
+## 9. Sources
 
-1. [Neo4j vs PostgreSQL: Graph DB or Relational? 2026 (Modern Datatools)](https://www.modern-datatools.com/compare/neo4j-vs-postgresql) — retrieved 2026-05-26
-2. [Graph Retrieval using Postgres Recursive CTEs (sheshbabu.com)](https://www.sheshbabu.com/posts/graph-retrieval-using-postgres-recursive-ctes/) — retrieved 2026-05-26
-3. [Context architecture is replacing RAG as agentic AI pushes enterprise retrieval to its limits (VentureBeat)](https://venturebeat.com/data/context-architecture-is-replacing-rag-as-agentic-ai-pushes-enterprise-retrieval-to-its-limits) — retrieved 2026-05-26
-4. [Neo4j GraphRAG Context Provider for Agent Framework (Microsoft Learn)](https://learn.microsoft.com/en-us/agent-framework/integrations/neo4j-graphrag) — retrieved 2026-05-26
-5. [Awesome-GraphRAG curated resources (DEEP-PolyU)](https://github.com/DEEP-PolyU/Awesome-GraphRAG) — retrieved 2026-05-26
+<details>
+<summary>References — retrieved via /web-research per D-046</summary>
 
-Last verified: 2026-05-26
+- https://www.modern-datatools.com/compare/neo4j-vs-postgresql — retrieved 2026-05-26 — foundation-stable
+- https://www.sheshbabu.com/posts/graph-retrieval-using-postgres-recursive-ctes/ — retrieved 2026-05-26 — foundation-stable
+- https://venturebeat.com/data/context-architecture-is-replacing-rag-as-agentic-ai-pushes-enterprise-retrieval-to-its-limits — retrieved 2026-05-26 — hot-tech
+- https://learn.microsoft.com/en-us/agent-framework/integrations/neo4j-graphrag — retrieved 2026-05-26 — hot-tech
+- https://github.com/DEEP-PolyU/Awesome-GraphRAG — retrieved 2026-05-26 — hot-tech
+
+</details>
+
+<details>
+<summary>Deeper dive — for senior FDEs (optional, not in reading budget)</summary>
+
+**The 17-entity acquire-gov schema as KG.** The schema from W1 Tue's brownfield inventory — Vendor, Proposal, Evaluation, Award, ContractModification, Cpar, Solicitation, Amendment, EvaluatorScore, SSDD, ConsensusRound, QASP findings — is a graph. Three CO query traversal patterns worth sketching before the SA-3 ADR: (1) "vendor's contracts with red CPARs" — 3 hops; (2) "evaluators who've scored vendors with QASP findings" — 4 hops with back-reference; (3) "contract modifications on awards where the SSDD never approved a tradeoff above IGCE" — recursive ContractModification chains, irregular depth. Pattern (3) is where Postgres recursive CTEs start to strain (high branching factor, variable depth) and Neo4j's physical-pointer traversal shows its advantage. Use this to frame the ops-burden vs query-latency trade-off in the SA-3 ADR.
+
+**NetworkX scalability ceiling.** The practical ceiling for NetworkX in-process in a Python FastAPI service under concurrent load is roughly 50k–100k nodes with multiple concurrent requests. At acquire-gov production volumes (per `training-project/feature-inventory-target.md`: ~80 active contracts, ~100 vendors, ~500 proposals), NetworkX is well inside the ceiling. The risk is process restart: any in-memory graph must be rebuilt from the source DB on restart. A startup hydration step (load the full graph from Postgres on `lifespan()`) keeps the latency acceptable at this scale.
+
+</details>
+
+Last verified: 2026-06-06

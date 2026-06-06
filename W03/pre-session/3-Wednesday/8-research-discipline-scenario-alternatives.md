@@ -21,94 +21,79 @@ sources:
   - url: https://umassglobal.libguides.com/c.php?g=1267504&p=9295343
     retrieved_on: 2026-05-26
     recency_category: foundation-stable
-last_verified: 2026-05-26
+last_verified: 2026-06-06
 ---
 
 # Research discipline — scenario alternatives via /web-research
 
+> [!NOTE]
+> **From earlier:** Mon's ADR framing named the question and constraints. Today's D-040 slot is the research execution — three scenario-alternatives prompts open this afternoon. This topic is the method behind that work.
+
 ## 1. Learning Objectives
 
-By the end of this reading, the learner can:
-
 - Frame an architectural decision as a *scenario-alternatives* exercise: name the question, enumerate 2–4 alternatives, evaluate against consistent criteria, recommend with documented trade-offs.
-- Apply a research-source-evaluation rubric (authority, currency, accuracy, relevance, objectivity) to candidate sources before citing them.
-- Recognize the recency-window discipline (hot-tech 3 months / federal-regulatory 6 months / foundation-stable 12 months) and why a sub-30-day source warrants explicit handling.
-- Identify common known-bad-pattern sources for current technologies (stale framework idioms, deprecated APIs, superseded model identifiers) and route around them.
-- Produce an ADR (or ADR-sized sketch) that another engineer could review for substance, not just style.
+- Apply the source-evaluation rubric (authority, currency, accuracy, relevance, objectivity) to candidate sources.
+- Recognise the recency-window discipline and apply it to today's SA-1/SA-2/SA-3 research.
+- Identify known-bad-pattern sources for current technologies and route around them.
 
 ## 2. Introduction
 
-Architectural decisions made under deadline pressure are usually made on intuition; the documentation, if it exists, is post-hoc rationalization. The discipline that gets you out of that mode is the *scenario-alternatives* shape — a named question, an enumerated set of viable options, consistent evaluation criteria, and a recommendation that you (or your future self) can rebuild from the doc alone [1][2].
+Decisions made under deadline pressure are usually made on intuition; documentation becomes post-hoc rationalization. The *scenario-alternatives* shape prevents that: a named question, enumerated viable options, consistent criteria, and a recommendation you can rebuild from the doc alone.
 
-The 2025–2026 problem is that the same LLMs that compress the research work also make it easier to produce sources that look authoritative but are stale, incorrect, or hallucinated. Deep-research agents — those that orchestrate multi-step web exploration into citation-rich reports — have been shown in 2026 evaluation benchmarks to misattribute claims, cite irrelevant sources, and produce confident summaries of patterns the underlying frameworks no longer endorse [4]. The implication is that you cannot outsource source-evaluation; it stays a human discipline even when the search is automated.
-
-The combined discipline — *scenario-alternatives* framing plus *source-evaluation* rigor plus *recency-window* hygiene — is what makes architectural research durable across the rapid version-churn of LLM-era tooling. A research session that produces three viable options, each backed by sources you can defend by author, date, and primary-vs-secondary status, gives you an ADR that survives both peer review and a six-month-later question of "why did we pick this?"
+LLMs compress research but produce sources that look authoritative yet are stale or hallucinated. Deep-research agents misattribute claims — correct-statement ratios ~70–82% in 2026 benchmarks. Source evaluation stays a human discipline.
 
 ## 3. Core Concepts
 
 ### 3.1 The scenario-alternatives shape
 
-A well-formed scenario for an architectural research exercise has four parts:
+Four parts, in order:
 
-1. **The question** — concrete enough to evaluate options against. "Which vector database?" is too vague; "Which vector database meets <p95 latency target>, <data-residency constraint>, <existing-skills constraint> for our workload?" is well-formed.
-2. **The constraints** — non-negotiables that narrow the option set. Includes performance targets, regulatory requirements, team skill ceilings, ops-budget caps, and pre-existing architectural commitments.
-3. **The alternatives** — typically 2–4, each a distinct architectural shape (not minor variants). Two is enough to force comparison; more than four becomes unwieldy [2].
-4. **The criteria** — the dimensions on which alternatives are evaluated, *consistent across all options*. Without consistent criteria, comparisons become apples-to-oranges.
+1. **The question** — concrete, at least one quantitative constraint. "Which KG backend?" is too vague; "Which meets sub-200ms p95 at acquire-gov cardinality within a single-Postgres ops budget?" is well-formed.
+2. **The constraints** — non-negotiables: performance targets, regulatory requirements, ops-budget caps, architecture commitments.
+3. **The alternatives** — 2–4 distinct architectural shapes. Two forces comparison; more than four signals a poorly-framed question.
+4. **The criteria** — evaluation dimensions *consistent across all options*. Inconsistent criteria produce apples-to-oranges comparisons.
 
-The recommendation is the *output* of the exercise, not the input. Picking the recommendation first and then justifying it is the failure mode the shape exists to prevent [3].
+> [!IMPORTANT]
+> **The recommendation is the *output* of the exercise, not the input.** Picking the recommendation first and then justifying it is the failure mode the shape exists to prevent. Wed PM's SA-1/SA-2/SA-3 sketches are not ADRs yet — they are research + one finding per SA + one open question. Full ADRs due EOD Thu W4.
 
-### 3.2 The source-evaluation rubric (CRAAP / authority-currency-accuracy)
+### 3.2 Source-evaluation rubric
 
-Library and information-science literature converges on roughly the same source-evaluation rubric — variants include CRAAP (Currency, Relevance, Authority, Accuracy, Purpose) and the five-question authority-currency-accuracy-relevance-objectivity model [5]:
+| Dimension | What to check | LLM-era note |
+|-----------|--------------|--------------|
+| **Authority** | Practitioner / maintainer / vendor / SEO site? | Primary sources outrank secondary tutorials |
+| **Currency** | Published/updated when? Tech still current? | Framework churn makes 2-year-old tutorials misleading |
+| **Accuracy** | Cross-verifiable against independent sources? | LLM summaries often misattribute claims |
+| **Relevance** | Addresses your question? | Adjacent content wastes research budget |
+| **Objectivity** | Balanced or product pitch? | Vendor docs are primary with obvious bias — name it |
 
-- **Authority.** Who wrote/published this? Are they a recognized practitioner, project maintainer, vendor, or an aggregator/SEO site? Primary sources (project docs, RFCs, official blog posts) outrank secondary sources (tutorials, summaries, AI-generated overviews).
-- **Currency.** When was it published or last updated? Is the technology it discusses still current?
-- **Accuracy.** Can the claims be cross-verified against other independent sources?
-- **Relevance.** Does it actually address your question, or is it adjacent?
-- **Objectivity.** Is it making a balanced comparison or selling a product?
-
-For LLM-era technologies (frameworks, model catalogs, agent libraries), authority and currency dominate. A two-year-old tutorial on a framework that has had three major releases since is actively misleading even if accurate at the time.
+Authority and currency dominate for LLM-era tech.
 
 ### 3.3 Recency windows by category
 
-Not all technology research has the same recency requirements. A useful three-band framing:
+| Category | Window | Examples |
+|----------|--------|---------|
+| Hot-tech | 3 months | LangGraph, LangChain v1.0, Bedrock catalog, OWASP LLM Top 10 |
+| Federal-regulatory | 6 months | FAR/DFARS amendments, FedRAMP baselines, OMB/OIG guidance |
+| Foundation-stable | 12 months | Java LTS, Postgres, Spring Boot 3.x, mature web standards |
 
-- **Hot-tech (3-month window).** Fast-moving frameworks (LLM orchestration, agent libraries), model catalogs and pricing, governance/security advisories. Anything older than 3 months has significant risk of having been superseded.
-- **Federal-regulatory (6-month window).** Regulations, agency policies, compliance guidance. These change slower than tech but faster than foundational standards; 6-month-old guidance often holds but needs verification.
-- **Foundation-stable (12-month window).** Language LTS versions, mature databases, foundational web standards, networking primitives, OS-level patterns. Twelve-month-old foundational content is usually fine.
+Name the recency category for each source you cite. A source outside its window is not automatically wrong — but you should know you're using it and justify it.
 
-The discipline is to *name the recency category* for each source you cite. A source from outside its category's window is not automatically wrong, but you should know you're using it and justify it.
+### 3.4 Sub-30-day sources
 
-### 3.4 The sub-30-day source
+A sub-30-day source warrants an explicit *adopt / defer / omit* decision. Surface the date, name the risk class, escalate per CLAUDE.md hard rule.
 
-A source dated within the last 30 days is special. It may be:
+> [!CAUTION]
+> **Sub-30-day vendor announcements** may not yet be validated by independent practitioners. Never silently include — make the explicit adopt/defer/omit call.
 
-- A newly released framework version with breaking changes,
-- A vendor announcement that has not yet been validated by independent practitioners,
-- A blog post by an early adopter whose experience may not generalize,
-- A regulatory advisory whose interpretation is still being established.
+### 3.5 Known-bad patterns and deep-research caution
 
-The right discipline for sub-30-day sources is not "exclude" but "explicit handling": surface the source's date, name the risk class, and make an explicit *adopt / defer / omit* decision. Adopting a 12-day-old blog post might be correct — but it should be a decision, not an accident [4].
+`known-bad-patterns.yml` lists patterns dominating older tutorials: LCEL-as-foundational, `Chain` class advocacy, LCEL `|` pipe syntax. Flag for instructor review; do not silently include.
 
-### 3.5 Known-bad patterns
-
-For any given technology family, there are *known-bad patterns* — patterns that were once correct, are now superseded, but still dominate older tutorials and AI-generated summaries because the model's training data is older than the framework's current state. Examples (generic, not framework-specific):
-
-- *Deprecated API idioms.* The old way to call a function that still appears in tutorials but raises deprecation warnings or has been removed.
-- *Superseded model identifiers.* Older model IDs that no longer exist in the current catalog.
-- *Abstract patterns the framework has moved away from.* Foundational primitives that have been replaced by simpler shapes; tutorials still teach the old foundation because they predate the change.
-
-Maintaining a project-local *known-bad-patterns* list — and checking candidate code/patterns against it — is one of the cheapest interventions against stale-source contamination. When a candidate pattern matches, you don't have to re-litigate why it's wrong; the list tells you what to substitute and points at current docs [4].
-
-### 3.6 The deep-research-agent caution
-
-In 2026, deep-research agents (Gemini Deep Research, Manus, Perplexity Deep Research, OpenAI's research tool) have become common; cohort engineers will use them. The 2026 evaluation benchmarks reveal a consistent failure mode: even high-quality agents misattribute claims, cite irrelevant sources, or summarize patterns the source actually contradicts. Reported correct-statement ratios range from ~70% to ~82% across leading systems [4].
-
-The implication for your own research workflow: deep-research output is a *starting point*, not a citable conclusion. Use it to surface candidate sources, then verify each source independently using the rubric above. Cite the primary source you verified, not the agent that found it.
+Deep-research-agent output is a **starting point, not a citable conclusion**. Cite the primary source you verified, not the agent that found it.
 
 ## 4. Generic Implementation
 
-A minimal scenario-alternatives ADR template, applied to a generic non-federal example (choosing a feature-flag system for a mid-sized SaaS):
+Minimal scenario-alternatives ADR template — feature-flag system selection (generic SaaS, not federal-acquisitions):
 
 ```markdown
 # ADR-2026-04-12: Feature-flag system
@@ -117,128 +102,110 @@ A minimal scenario-alternatives ADR template, applied to a generic non-federal e
 Proposed (decision needed before sprint 14)
 
 ## Context
-We are deploying ~30 new features over the next 6 months and need:
-- per-user / per-tenant flag targeting,
-- gradual rollout with percentage gates,
-- audit trail (who flipped what, when),
-- a self-host option (data-residency constraint from EU customers).
+~30 new features over 6 months; need per-user targeting, gradual rollout,
+audit trail, self-host option (EU data-residency constraint).
 
-## Decision drivers (criteria, consistent across alternatives)
+## Decision drivers (consistent across all alternatives)
 1. Self-host viable (data residency)
-2. Engineering effort to integrate (weeks of dev time)
-3. Cost at our scale (~50k MAU)
+2. Engineering integration effort (weeks)
+3. Cost at ~50k MAU
 4. Audit-log fidelity
-5. SDK support for our stack (Python + TypeScript)
-6. Operational burden (do we operate it, or vendor does?)
+5. SDK support (Python + TypeScript)
 
 ## Considered alternatives
 
-### Option A: LaunchDarkly (managed SaaS)
-- Self-host: No (deal-breaker for EU subset)
-- Integration: ~1 week
-- Cost: $$$
-- Audit: Strong
-- SDKs: Strong
-- Ops burden: None
-Source: LaunchDarkly docs (vendor, hot-tech, retrieved YYYY-MM-DD).
-
-### Option B: Unleash (open source, self-hosted)
-- Self-host: Yes
-- Integration: ~2 weeks
-- Cost: Infra only
-- Audit: Strong
-- SDKs: Strong
-- Ops burden: We run it
-Source: Unleash docs (project, hot-tech, retrieved YYYY-MM-DD); independent
-operations write-up from Company X (secondary, foundation-stable, retrieved YYYY-MM-DD).
-
-### Option C: Build in-house
-- Self-host: Yes (trivially)
-- Integration: ~4 weeks initial + ongoing maintenance
-- Cost: Salary
-- Audit: As good as we build it
-- SDKs: As good as we build them
-- Ops burden: Highest
-Source: N/A — internal capability assessment.
+| Criterion | LaunchDarkly (managed) | Unleash (self-hosted OSS) | Build in-house |
+|-----------|----------------------|--------------------------|---------------|
+| Self-host | No (deal-breaker) | Yes | Yes |
+| Integration | ~1 week | ~2 weeks | ~4 weeks |
+| Cost | $$$ | Infra only | Salary |
+| Audit | Strong | Strong | As built |
 
 ## Decision
-Option B (Unleash). Self-host requirement disqualifies A; B and C have
-similar capability profile but C costs ~4× the engineering time and we
-have no differentiated reason to own the implementation.
+Option B (Unleash). Self-host requirement disqualifies A; B vs C — B
+costs ~2× less engineering time with comparable capability.
 
 ## Consequences
-- We take on ops for one more component (mitigated by Unleash's managed-cloud
-  fallback if we change our mind on data residency).
-- We accept a 2-week integration cost; alternative was a deal-breaker for
-  the EU customer segment.
-- We revisit if our MAU grows past ~500k (different cost profile).
+- We take on ops for one more component.
+- 2-week integration cost accepted; alternative was a data-residency deal-breaker.
+- Revisit if MAU > 500k (different cost profile).
 
 ## Sources verified
-1. Unleash official docs, retrieved YYYY-MM-DD (hot-tech window, in-range).
-2. LaunchDarkly pricing page, retrieved YYYY-MM-DD (hot-tech, in-range).
-3. Company X operations write-up, published 2025-08, retrieved YYYY-MM-DD
-   (foundation-stable, 9-month-old, in-range; vendor-independent so authority OK).
+1. Unleash official docs, retrieved YYYY-MM-DD (hot-tech, in-range).
+2. LaunchDarkly pricing, retrieved YYYY-MM-DD (hot-tech, in-range).
 ```
 
-What each piece does:
+Decision flows from the criteria table — the recommendation is the output, not the input. Consequences section names the second-order effects you're accepting.
 
-- **Status + context** make the decision *time-localized* — a future reader knows what was true when this was decided.
-- **Decision drivers** are the consistent criteria — every alternative is scored on the same dimensions.
-- **2–4 alternatives** including a build-it-yourself option as a forcing function.
-- **Decision** flows from the drivers; it is the *output*, not the input.
-- **Consequences** name the second-order effects you're accepting.
-- **Sources verified** lists primary sources with retrieval dates and recency-category labels.
+> [!NOTE]
+> **D-040 PM slot opens today.** SA-1 / SA-2 / SA-3 scenario-research prompts release this morning. The method in this topic file is the discipline behind that work — frame the question first, then search. Full ADRs due EOD Thu W4.
 
 ## 5. Real-world Patterns
 
-**Fintech — payment-gateway selection (Stripe/Adyen/Braintree).** Production ADRs at payment companies show a consistent pattern: 3–4 alternatives, ~8 consistent criteria (latency, fees, regional coverage, dispute-handling, PCI scope, currency support, vendor lock-in, SDK quality), one explicit "build in-house" option that's typically rejected on cost. The ADR survives 5+ years and is the load-bearing reference when the question is reopened on contract renewal [2].
+**Fintech — payment gateway ADRs.** 3–4 alternatives, ~8 consistent criteria (latency, fees, PCI scope, vendor lock-in). ADR survives 5+ years when reopened.
 
-**Healthcare — interoperability standard (FHIR vs HL7 v2 vs proprietary).** Hospital IT departments document interop-standard choices as scenario-alternatives ADRs because the choice is sticky on the scale of decades. The criteria typically include regulatory mandate, ecosystem support, IT-staff skills, vendor coverage of the standard, and migration cost. Sources are heavily primary (standards-body docs, CMS publications, EHR vendor docs) because secondary tutorials lag the regulatory environment too much [1].
-
-**Enterprise SaaS — observability stack (Datadog vs Grafana stack vs in-house).** A 2026 production retro described a company that initially picked Datadog by intuition, hit cost issues at scale, and reopened the decision two years later as a scenario-alternatives exercise. The retro's lesson: the original "decision" was a vendor demo + a quick proof-of-concept, not a documented comparison. The reopened decision produced an ADR with five criteria, three alternatives, and a recommendation to migrate selectively — a path the original intuition-based decision could not have supported [3].
-
-**Open-source — build-tool migration (Gradle vs Bazel vs Buck).** Large open-source projects publish their build-tool ADRs as part of their contribution docs. The pattern: criteria emphasize community size, build correctness guarantees, incremental-build speed, and team-familiarity cost. The ADRs typically cite primary sources (the build tools' own docs, benchmarks from teams that have migrated) and explicitly note which secondary tutorials were *not* used because of recency/authority issues [3].
+**Enterprise SaaS — observability retro.** Vendor picked by intuition; cost issues at scale forced a reopen. Scenario-alternatives produced a migration path the intuition-based original couldn't support.
 
 ## 6. Best Practices
 
-- **Frame the question before searching.** A vague question generates undirected research. Constrain the question by performance target, regulatory boundary, and existing-architecture commitment.
-- **Cite primary sources.** Project docs, RFCs, official blog posts, regulatory filings. Use secondary sources to find primary ones, not as endpoints.
-- **Tag every source with retrieval date and recency category.** A claim's truth has a half-life; the date is part of the citation.
-- **Treat deep-research-agent output as a candidate-source list, not a conclusion.** Verify every cited source independently using the rubric.
-- **Surface sub-30-day sources for explicit decision.** Adopt, defer, or omit — never silently include.
-- **Maintain a known-bad-patterns list per project / per technology family.** Cheap to maintain, expensive to skip.
-- **Keep alternatives between 2 and 4.** Two forces comparison; more than four becomes unmanageable and signals a poorly-framed question.
-- **Write the consequences section honestly.** Every architectural decision has trade-offs; an ADR with no negative consequences is incomplete.
+- **Frame the question before searching.** A vague question generates undirected research.
+- **Cite primary sources.** Secondary sources find primary ones; they are not endpoints.
+- **Tag every source with retrieval date and recency category.** A claim's truth has a half-life.
+- **Treat deep-research-agent output as a candidate-source list.** Verify each source independently.
+- **Surface sub-30-day sources for explicit adopt/defer/omit.** Never silently include.
+- **Keep alternatives between 2 and 4.** More than four signals a poorly-framed question.
+
+> [!WARNING]
+> **Anti-pattern: `model-knowledge-as-research`.** Using model-internal knowledge without `/web-research` citations violates D-046 — produces vibes-based decisions that fail the Phase 1 gate. Every current-state claim must trace to a retrieved source with a date. "The model said Neo4j is faster" is not a citation.
 
 ## 7. Hands-on Exercise
 
-**ADR sketch (15 min).** Pick a real architectural decision you face (or imagine one for your current project — but not from the federal-acquisitions domain). Examples: queue technology, deployment platform, frontend framework, monitoring tool, payment processor, search backend.
+Pick a plausible architectural decision for your pair project (not federal-acquisitions domain directly). Produce a sketch: (1) question with one quantitative constraint; (2) 3–5 measurable criteria; (3) 2–4 alternatives in a criteria table; (4) one source per alternative with retrieval date and recency category; (5) one-sentence recommendation keyed to criteria; (6) one consequence you're accepting.
 
-Produce a scenario-alternatives ADR sketch with:
+> [!NOTE]
+> **Self-check** (30s — answer mentally before expanding)
+>
+> 1. A deep-research agent returns a summary saying "LangGraph is the best choice because of its LCEL foundation." What two problems does this source have?
+> 2. A source for your SA-2 ADR was published 18 days ago on LangChain's official blog announcing LangGraph v0.3. What is the correct handling per the research protocol?
 
-1. The question, phrased concretely (1 sentence including at least one quantitative constraint).
-2. 3–5 decision-driver criteria, each one objectively measurable.
-3. 2–4 alternatives, each evaluated against all criteria (use a table).
-4. One source per alternative, with author/publisher, date, recency category, and primary/secondary classification.
-5. A recommendation with one-sentence justification keyed to the criteria.
-6. One consequence you're accepting and one you'd revisit later.
+<details>
+<summary>Show answers</summary>
 
-**What good looks like:** Your question is specific enough that two engineers reading it would evaluate the same alternatives. Your criteria are observable (e.g., "p95 latency under 100ms," not "fast enough"). Your alternatives include at least one option you don't recommend — and you've taken its case seriously. Every source has a date and a recency category in-window. Your recommendation cites the criteria that drove it, not personal preference. You name a real consequence (this is the discipline test — there is always a consequence; if you can't name one, you haven't looked hard enough).
+1. Two problems: (a) LCEL-as-foundational is a known-bad pattern — LangGraph v1.0 docs do not centre LCEL/Runnables; the summary is citing a stale framing. (b) Deep-research-agent output is not a citable conclusion — you must verify the underlying primary source (LangGraph official docs) independently before citing. The summary is a candidate-source lead, not a citation.
+2. Sub-30-day source handling: surface the publication date, name the risk class (vendor announcement, not yet independently validated), and make an explicit adopt/defer/omit decision with instructor sign-off per CLAUDE.md hard rule. If the announcement describes a breaking change or new API, defer until at least one independent practitioner report validates the behavior. Do not silently include.
+
+</details>
+
+> [!IMPORTANT]
+> **The recommendation is the *output*, not the input.** Picking the answer first then justifying it is the failure mode the scenario-alternatives shape exists to prevent. Wed PM SA sketches are research + one finding + one open question per SA — not pre-decided ADRs.
 
 ## 8. Key Takeaways
 
-- *What are the four parts of a well-formed scenario-alternatives exercise?* (Question, constraints, 2–4 alternatives, consistent evaluation criteria.)
-- *What does the source-evaluation rubric (authority/currency/accuracy/relevance/objectivity) buy you, and why is authority especially load-bearing for LLM-era tech?* (It filters stale or hallucinated content; primary sources outrank secondary ones, and version-churn makes secondary tutorials silently incorrect.)
-- *Why does a sub-30-day source warrant explicit adopt/defer/omit handling?* (It may not have been validated by independent practitioners, and its risk class is different from older sources; an explicit decision is the right discipline.)
-- *Why is deep-research-agent output a starting point, not a citable conclusion?* (Benchmarks show consistent misattribution and citation errors; verify each source independently before citing.)
-- *Why must consequences be written honestly?* (Every architectural decision has trade-offs; an ADR with no negative consequences is incomplete and produces over-confident future decisions.)
+- Scenario-alternatives: question + constraints + 2–4 alternatives + consistent criteria → recommendation as output, not input.
+- Source rubric: authority and currency dominate; primary outranks secondary.
+- Recency windows: hot-tech 3 months, federal-regulatory 6 months, foundation-stable 12 months.
+- Deep-research-agent output is a starting point — verify each source independently before citing.
 
-## Sources
+## 9. Sources
 
-1. [Maintain an architecture decision record (Microsoft Azure Well-Architected Framework)](https://learn.microsoft.com/en-us/azure/well-architected/architect-role/architecture-decision-record) — retrieved 2026-05-26
-2. [Master architecture decision records (ADRs): Best practices (AWS Architecture Blog)](https://aws.amazon.com/blogs/architecture/master-architecture-decision-records-adrs-best-practices-for-effective-decision-making/) — retrieved 2026-05-26
-3. [Architecture Decision Record (Martin Fowler's bliki)](https://martinfowler.com/bliki/ArchitectureDecisionRecord.html) — retrieved 2026-05-26
-4. [DeepTRACE: Auditing Deep Research AI Systems for Tracking Reliability Across Citations and Evidence (arXiv)](https://arxiv.org/pdf/2509.04499) — retrieved 2026-05-26
-5. [Criteria for Evaluating Sources (UMass Global Research Guides)](https://umassglobal.libguides.com/c.php?g=1267504&p=9295343) — retrieved 2026-05-26
+<details>
+<summary>References — retrieved via /web-research per D-046</summary>
 
-Last verified: 2026-05-26
+- https://learn.microsoft.com/en-us/azure/well-architected/architect-role/architecture-decision-record — retrieved 2026-05-26 — foundation-stable
+- https://aws.amazon.com/blogs/architecture/master-architecture-decision-records-adrs-best-practices-for-effective-decision-making/ — retrieved 2026-05-26 — foundation-stable
+- https://martinfowler.com/bliki/ArchitectureDecisionRecord.html — retrieved 2026-05-26 — foundation-stable
+- https://arxiv.org/pdf/2509.04499 — retrieved 2026-05-26 — hot-tech (DeepTRACE: Auditing Deep Research AI Systems)
+- https://umassglobal.libguides.com/c.php?g=1267504&p=9295343 — retrieved 2026-05-26 — foundation-stable
+
+</details>
+
+<details>
+<summary>Deeper dive — for senior FDEs (optional, not in reading budget)</summary>
+
+**Consequences section as the discipline test.** The consequences section of an ADR is where intellectual honesty lives. Every architectural decision has trade-offs; an ADR with no negative consequences is incomplete and produces over-confident future decisions. Senior FDEs reviewing peer ADRs should check the consequences section first — if it reads as entirely positive, the author has either found a unicorn decision or hasn't looked hard enough. Common consequence classes: additional ops burden, skill-ceiling risk (team doesn't fully know the technology yet), performance cliff at a specific scale threshold, vendor-lock exposure, migration cost if the decision is revisited.
+
+**Research-without-citation-date as an audit trail gap.** In federal-acquisitions work, the audit trail for an architectural decision includes the sources used and their dates. A source cited without a retrieval date is not an audit-grade citation — if the source is later amended or retracted, there is no way to reconstruct what the source said at the time of the decision. The `last_verified` + `/web-research` citation discipline in this programme is not bureaucracy; it is the same provenance discipline that federal audit teams apply to procurement decisions. Senior FDEs should treat the citation format as a first-class deliverable, not a formality.
+
+</details>
+
+Last verified: 2026-06-06
